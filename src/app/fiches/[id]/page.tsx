@@ -20,7 +20,7 @@ export default async function FicheDetailPage({
   }
 
   const { data: sections, error: sectionsError } = await supabase
-    .from("fiche_sections")
+    .from("fiche_sections_dashboard")
     .select("*")
     .eq("fiche_id", id)
     .order("sort_order", { ascending: true });
