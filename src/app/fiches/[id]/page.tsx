@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import SectionEditor from "@/components/SectionEditor";
 
 export default async function FicheDetailPage({
   params,
@@ -100,7 +101,9 @@ export default async function FicheDetailPage({
 
         {!sectionsError && (!sections || sections.length === 0) && (
           <div className="rounded-xl border border-yellow-500 bg-yellow-950/40 p-4">
-            <p className="font-semibold text-yellow-300">Aucune section trouvée</p>
+            <p className="font-semibold text-yellow-300">
+              Aucune section trouvée
+            </p>
             <p className="text-yellow-200">
               La fiche existe, mais aucune section n’est encore associée.
             </p>
@@ -109,37 +112,8 @@ export default async function FicheDetailPage({
 
         {!sectionsError && sections && sections.length > 0 && (
           <div className="space-y-4">
-            {sections.map((section, index) => (
-              <article
-                key={section.id}
-                className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm sm:p-5"
-              >
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="mb-1 text-xs uppercase tracking-wide text-slate-500">
-                      Section {index + 1}
-                    </p>
-
-                    <h2 className="text-lg font-semibold leading-snug text-slate-100 sm:text-xl">
-                      {section.section_title}
-                    </h2>
-                  </div>
-
-                  <span className="w-fit rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
-                    {section.completion_status} · {section.character_count} caractères
-                  </span>
-                </div>
-
-                {section.content ? (
-                  <p className="whitespace-pre-wrap rounded-xl bg-slate-950/50 p-4 text-sm leading-7 text-slate-200 sm:text-base">
-                    {section.content}
-                  </p>
-                ) : (
-                  <p className="rounded-xl bg-slate-950/50 p-4 text-sm italic text-slate-500">
-                    Section non renseignée.
-                  </p>
-                )}
-              </article>
+            {sections.map((section) => (
+              <SectionEditor key={section.id} section={section} />
             ))}
           </div>
         )}
