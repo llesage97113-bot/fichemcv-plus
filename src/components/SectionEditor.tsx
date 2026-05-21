@@ -7,27 +7,110 @@ type SectionEditorProps = {
   section: {
     id: string;
     section_title: string;
+    student_question?: string | null;
+    help_text?: string | null;
     content: string | null;
     completion_status: string;
     character_count: number;
+    is_core?: boolean | null;
   };
 };
+
+function getStatusLabel(status: string) {
+  if (status === "vide") return "À compléter";
+  if (status === "trop_court") return "Trop court";
+  if (status === "partiel") return "Partiel";
+  if (status === "exploitable") return "Exploitable";
+  return status;
+}
+
+function getStatusHelp(status: string) {
+  if (status === "vide") {
+    return "Cette section est vide. Elle doit être renseignée pour rendre la fiche exploitable.";
+  }
+
+  if (status === "trop_court") {
+    return "La réponse est encore trop courte. Ajoute des détails concrets sur la situation.";
+  }
+
+  if (status === "partiel") {
+    return "La réponse contient des éléments utiles, mais elle peut être précisée.";
+  }
+
+  if (status === "exploitable") {
+    return "Cette réponse semble suffisamment développée pour être analysée.";
+  }
+
+  return "Statut de complétude à vérifier.";
+}
+
+function getStatusClasses(status: string) {
+  if (status === "vide") {
+    return {
+      badge: "bg-slate-800 text-slate-300 border-slate-700",
+      box: "border-slate-800 bg-slate-950/40 text-slate-400",
+      bar: "bg-slate-700",
+      progress: "w-1/12 bg-slate-500",
+    };
+  }
+
+  if (status === "trop_court") {
+    return {
+      badge: "bg-amber-500/10 text-amber-300 border-amber-500/30",
+      box: "border-amber-500/30 bg-amber-950/20 text-amber-200",
+      bar: "bg-slate-700",
+      progress: "w-1/4 bg-amber-400",
+    };
+  }
+
+  if (status === "partiel") {
+    return {
+      badge: "bg-sky-500/10 text-sky-300 border-sky-500/30",
+      box: "border-sky-500/30 bg-sky-950/20 text-sky-200",
+      bar: "bg-slate-700",
+      progress: "w-2/3 bg-sky-400",
+    };
+  }
+
+  if (status === "exploitable") {
+    return {
+      badge: "bg-emerald-500/10 text-emerald-300 border-emerald-500/30",
+      box: "border-emerald-500/30 bg-emerald-950/20 text-emerald-200",
+      bar: "bg-slate-700",
+      progress: "w-full bg-emerald-400",
+    };
+  }
+
+  return {
+    badge: "bg-slate-800 text-slate-300 border-slate-700",
+    box: "border-slate-800 bg-slate-950/40 text-slate-400",
+    bar: "bg-slate-700",
+    progress: "w-1/12 bg-slate-500",
+  };
+}
 
 export default function SectionEditor({ section }: SectionEditorProps) {
   const [content, setContent] = useState(section.content ?? "");
   const [status, setStatus] = useState(section.completion_status);
-  const [characterCount, setCharacterCount] = useState(section.character_count);
+  const [characterCount, setCharacterCount] = useState(
+    section.character_count ?? 0
+  );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const statusClasses = getStatusClasses(status);
 
   async function saveSection() {
     setSaving(true);
     setMessage(null);
 
-    const { data, error } = await supabase.rpc("prototype_update_section_content", {
-      p_section_id: section.id,
-      p_content: content,
-    });
+    const { data, error } = await supabase.rpc(
+      "prototype_update_section_content",
+      {
+        p_section_id: section.id,
+        p_content: content,
+      }
+    );
 
     if (error) {
       setMessage(`Erreur : ${error.message}`);
@@ -49,13 +132,49 @@ export default function SectionEditor({ section }: SectionEditorProps) {
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm sm:p-5">
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <h2 className="text-lg font-semibold leading-snug text-slate-100 sm:text-xl">
-          {section.section_title}
-        </h2>
+        <div>
+          <div className="mb-2 flex flex-wrap gap-2">
+            {section.is_core && (
+              <span className="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">
+                Section centrale
+              </span>
+            )}
 
-        <span className="w-fit rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
-          {status} · {characterCount} caractères
-        </span>
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${statusClasses.badge}`}
+            >
+              {getStatusLabel(status)} · {characterCount} caractères
+            </span>
+          </div>
+
+          <h2 className="text-lg font-semibold leading-snug text-slate-100 sm:text-xl">
+            {section.section_title}
+          </h2>
+        </div>
+      </div>
+
+      <div className={`mb-4 h-2 overflow-hidden rounded-full ${statusClasses.bar}`}>
+        <div className={`h-full rounded-full ${statusClasses.progress}`} />
+      </div>
+
+      {(section.student_question || section.help_text) && (
+        <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/50 p-4">
+          {section.student_question && (
+            <p className="mb-2 font-medium text-sky-200">
+              {section.student_question}
+            </p>
+          )}
+
+          {section.help_text && (
+            <p className="text-sm leading-6 text-slate-400">
+              {section.help_text}
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className={`mb-4 rounded-xl border p-3 ${statusClasses.box}`}>
+        <p className="text-sm">{getStatusHelp(status)}</p>
       </div>
 
       <textarea
@@ -72,7 +191,8 @@ export default function SectionEditor({ section }: SectionEditorProps) {
 
       <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-400">
-          {message ?? "Les modifications ne sont enregistrées qu’après clic sur Sauvegarder."}
+          {message ??
+            "Les modifications ne sont enregistrées qu’après clic sur Sauvegarder."}
         </p>
 
         <button
