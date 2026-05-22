@@ -3,6 +3,38 @@ import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import SectionEditor from "@/components/SectionEditor";
 
+function getGlobalProgressClasses(score: number) {
+  if (score >= 80) {
+    return {
+      text: "text-emerald-300",
+      bar: "bg-emerald-400",
+      box: "border-emerald-400/30 bg-emerald-950/20",
+    };
+  }
+
+  if (score >= 55) {
+    return {
+      text: "text-sky-300",
+      bar: "bg-sky-400",
+      box: "border-sky-400/30 bg-sky-950/20",
+    };
+  }
+
+  if (score > 0) {
+    return {
+      text: "text-amber-300",
+      bar: "bg-amber-400",
+      box: "border-amber-400/30 bg-amber-950/20",
+    };
+  }
+
+  return {
+    text: "text-slate-300",
+    bar: "bg-slate-500",
+    box: "border-slate-700 bg-slate-950/50",
+  };
+}
+
 export default async function FicheDetailPage({
   params,
 }: {
@@ -25,6 +57,9 @@ export default async function FicheDetailPage({
     .select("*")
     .eq("fiche_id", id)
     .order("sort_order", { ascending: true });
+
+  const completionScore = Number(fiche.completion_score ?? 0);
+  const progressClasses = getGlobalProgressClasses(completionScore);
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
@@ -55,6 +90,35 @@ export default async function FicheDetailPage({
             {fiche.title}
           </h1>
 
+          <div
+            className={`mb-5 rounded-2xl border p-4 ${progressClasses.box}`}
+          >
+            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Progression globale de la fiche
+                </p>
+                <p className={`text-2xl font-bold ${progressClasses.text}`}>
+                  {completionScore}% complétée
+                </p>
+              </div>
+
+              <p className="text-sm text-slate-300">
+                Statut qualité :{" "}
+                <span className={`font-semibold ${progressClasses.text}`}>
+                  {fiche.quality_status ?? "non évalué"}
+                </span>
+              </p>
+            </div>
+
+            <div className="h-3 overflow-hidden rounded-full bg-slate-800">
+              <div
+                className={`h-full rounded-full ${progressClasses.bar}`}
+                style={{ width: `${Math.min(Math.max(completionScore, 0), 100)}%` }}
+              />
+            </div>
+          </div>
+
           <div className="grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
             <div className="rounded-xl bg-slate-950/60 p-3">
               <p className="text-xs uppercase tracking-wide text-slate-500">
@@ -74,20 +138,18 @@ export default async function FicheDetailPage({
 
             <div className="rounded-xl bg-slate-950/60 p-3">
               <p className="text-xs uppercase tracking-wide text-slate-500">
-                Complétude
-              </p>
-              <p className="font-medium text-slate-100">
-                {fiche.completion_score ?? 0}% — {fiche.quality_status}
-              </p>
-            </div>
-
-            <div className="rounded-xl bg-slate-950/60 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
                 Commentaires actifs
               </p>
               <p className="font-medium text-slate-100">
                 {fiche.active_comments_count}
               </p>
+            </div>
+
+            <div className="rounded-xl bg-slate-950/60 p-3">
+              <p className="text-xs uppercase tracking-wide text-slate-500">
+                Identifiant fiche
+              </p>
+              <p className="truncate font-mono text-xs text-slate-300">{id}</p>
             </div>
           </div>
         </header>
