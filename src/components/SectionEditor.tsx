@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+
+type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
 
 type SectionEditorProps = {
   section: {
@@ -89,32 +91,50 @@ function getStatusClasses(status: string) {
   };
 }
 
+function getSaveMessage(saveState: SaveState) {
+  if (saveState === "dirty") return "Modification en cours…";
+  if (saveState === "saving") return "Sauvegarde automatique…";
+  if (saveState === "saved") return "Sauvegardé automatiquement";
+  if (saveState === "error") return "Erreur de sauvegarde";
+  return "La sauvegarde automatique se déclenche après quelques secondes d’inactivité.";
+}
+
+function getSaveMessageClass(saveState: SaveState) {
+  if (saveState === "dirty") return "text-amber-300";
+  if (saveState === "saving") return "text-sky-300";
+  if (saveState === "saved") return "text-emerald-300";
+  if (saveState === "error") return "text-red-300";
+  return "text-slate-400";
+}
+
 export default function SectionEditor({ section }: SectionEditorProps) {
   const [content, setContent] = useState(section.content ?? "");
   const [status, setStatus] = useState(section.completion_status);
   const [characterCount, setCharacterCount] = useState(
     section.character_count ?? 0
   );
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const statusClasses = getStatusClasses(status);
+  const initialContentRef = useRef(section.content ?? "");
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  async function saveSection() {
-    setSaving(true);
-    setMessage(null);
+  async function saveSection(nextContent: string) {
+    setSaveState("saving");
+    setErrorMessage(null);
 
     const { data, error } = await supabase.rpc(
       "prototype_update_section_content",
       {
         p_section_id: section.id,
-        p_content: content,
+        p_content: nextContent,
       }
     );
 
     if (error) {
-      setMessage(`Erreur : ${error.message}`);
-      setSaving(false);
+      setSaveState("error");
+      setErrorMessage(error.message);
       return;
     }
 
@@ -123,11 +143,32 @@ export default function SectionEditor({ section }: SectionEditorProps) {
     if (updated) {
       setStatus(updated.completion_status);
       setCharacterCount(updated.character_count);
-      setMessage("Sauvegardé");
+      initialContentRef.current = nextContent;
+      setSaveState("saved");
+    }
+  }
+
+  useEffect(() => {
+    if (content === initialContentRef.current) {
+      return;
     }
 
-    setSaving(false);
-  }
+    setSaveState("dirty");
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    timeoutRef.current = setTimeout(() => {
+      saveSection(content);
+    }, 2000);
+
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, [content]);
 
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm sm:p-5">
@@ -180,28 +221,33 @@ export default function SectionEditor({ section }: SectionEditorProps) {
       <textarea
         value={content}
         onChange={(event) => {
-          setContent(event.target.value);
-          setCharacterCount(event.target.value.trim().length);
-          setMessage(null);
+          const nextContent = event.target.value;
+          setContent(nextContent);
+          setCharacterCount(nextContent.trim().length);
         }}
         rows={8}
         className="min-h-40 w-full rounded-xl border border-slate-700 bg-slate-950/70 p-4 text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400 sm:text-base"
         placeholder="Rédige ta réponse ici..."
       />
 
-      <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p className="text-sm text-slate-400">
-          {message ??
-            "Les modifications ne sont enregistrées qu’après clic sur Sauvegarder."}
-        </p>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className={`text-sm font-medium ${getSaveMessageClass(saveState)}`}>
+            {getSaveMessage(saveState)}
+          </p>
+
+          {errorMessage && (
+            <p className="mt-1 text-xs text-red-300">{errorMessage}</p>
+          )}
+        </div>
 
         <button
           type="button"
-          onClick={saveSection}
-          disabled={saving}
+          onClick={() => saveSection(content)}
+          disabled={saveState === "saving"}
           className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {saving ? "Sauvegarde..." : "Sauvegarder"}
+          {saveState === "saving" ? "Sauvegarde..." : "Sauvegarder maintenant"}
         </button>
       </div>
     </article>
