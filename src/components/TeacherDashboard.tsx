@@ -1,0 +1,395 @@
+"use client";
+
+import Link from "next/link";
+import { useMemo, useState } from "react";
+
+type FicheDashboardItem = {
+  fiche_id: string;
+  class_name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  epreuve: string | null;
+  numero_fiche: number | null;
+  title: string | null;
+  status: string | null;
+  completion_score: number | null;
+  quality_status: string | null;
+  active_comments_count: number | null;
+};
+
+type TeacherDashboardProps = {
+  fiches: FicheDashboardItem[];
+};
+
+function getProgressClasses(score: number) {
+  if (score >= 80) {
+    return {
+      text: "text-emerald-300",
+      bar: "bg-emerald-400",
+      track: "bg-slate-800",
+    };
+  }
+
+  if (score >= 55) {
+    return {
+      text: "text-sky-300",
+      bar: "bg-sky-400",
+      track: "bg-slate-800",
+    };
+  }
+
+  if (score > 0) {
+    return {
+      text: "text-amber-300",
+      bar: "bg-amber-400",
+      track: "bg-slate-800",
+    };
+  }
+
+  return {
+    text: "text-slate-400",
+    bar: "bg-slate-500",
+    track: "bg-slate-800",
+  };
+}
+
+function getCompletionBucket(score: number) {
+  if (score >= 80) return "avancee";
+  if (score >= 55) return "intermediaire";
+  if (score > 0) return "fragile";
+  return "vide";
+}
+
+export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
+  const [search, setSearch] = useState("");
+  const [classFilter, setClassFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [completionFilter, setCompletionFilter] = useState("all");
+
+  const classes = useMemo(() => {
+    return Array.from(
+      new Set(fiches.map((fiche) => fiche.class_name).filter(Boolean))
+    ).sort();
+  }, [fiches]);
+
+  const statuses = useMemo(() => {
+    return Array.from(
+      new Set(fiches.map((fiche) => fiche.status).filter(Boolean))
+    ).sort();
+  }, [fiches]);
+
+  const filteredFiches = useMemo(() => {
+    const normalizedSearch = search.trim().toLowerCase();
+
+    return fiches.filter((fiche) => {
+      const score = Number(fiche.completion_score ?? 0);
+
+      const studentName = `${fiche.first_name ?? ""} ${
+        fiche.last_name ?? ""
+      }`.toLowerCase();
+
+      const title = `${fiche.title ?? ""}`.toLowerCase();
+
+      const matchesSearch =
+        normalizedSearch.length === 0 ||
+        studentName.includes(normalizedSearch) ||
+        title.includes(normalizedSearch);
+
+      const matchesClass =
+        classFilter === "all" || fiche.class_name === classFilter;
+
+      const matchesStatus =
+        statusFilter === "all" || fiche.status === statusFilter;
+
+      const matchesCompletion =
+        completionFilter === "all" ||
+        getCompletionBucket(score) === completionFilter;
+
+      return (
+        matchesSearch &&
+        matchesClass &&
+        matchesStatus &&
+        matchesCompletion
+      );
+    });
+  }, [fiches, search, classFilter, statusFilter, completionFilter]);
+
+  function resetFilters() {
+    setSearch("");
+    setClassFilter("all");
+    setStatusFilter("all");
+    setCompletionFilter("all");
+  }
+
+  return (
+    <>
+      <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm">
+        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-100">
+              Filtres du tableau de bord
+            </h2>
+            <p className="text-sm text-slate-400">
+              {filteredFiches.length} fiche(s) affichée(s) sur {fiches.length}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
+          >
+            Réinitialiser
+          </button>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-4">
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Rechercher
+            </span>
+            <input
+              type="search"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Nom, prénom ou titre"
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
+            />
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Classe
+            </span>
+            <select
+              value={classFilter}
+              onChange={(event) => setClassFilter(event.target.value)}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
+            >
+              <option value="all">Toutes les classes</option>
+              {classes.map((className) => (
+                <option key={className} value={className ?? ""}>
+                  {className}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Statut
+            </span>
+            <select
+              value={statusFilter}
+              onChange={(event) => setStatusFilter(event.target.value)}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
+            >
+              <option value="all">Tous les statuts</option>
+              {statuses.map((status) => (
+                <option key={status} value={status ?? ""}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Progression
+            </span>
+            <select
+              value={completionFilter}
+              onChange={(event) => setCompletionFilter(event.target.value)}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
+            >
+              <option value="all">Tous les niveaux</option>
+              <option value="vide">Vide — 0 %</option>
+              <option value="fragile">Fragile — 1 à 54 %</option>
+              <option value="intermediaire">Intermédiaire — 55 à 79 %</option>
+              <option value="avancee">Avancée — 80 % et plus</option>
+            </select>
+          </label>
+        </div>
+      </section>
+
+      {filteredFiches.length === 0 && (
+        <div className="rounded-lg border border-yellow-500 bg-yellow-950/40 p-4">
+          <p className="font-semibold text-yellow-300">
+            Aucune fiche ne correspond aux filtres
+          </p>
+          <p className="text-yellow-200">
+            Modifie les critères ou réinitialise les filtres.
+          </p>
+        </div>
+      )}
+
+      {filteredFiches.length > 0 && (
+        <>
+          <div className="space-y-4 md:hidden">
+            {filteredFiches.map((fiche) => {
+              const score = Number(fiche.completion_score ?? 0);
+              const progress = getProgressClasses(score);
+
+              return (
+                <article
+                  key={fiche.fiche_id}
+                  className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                      {fiche.epreuve} · Fiche n°{fiche.numero_fiche}
+                    </span>
+
+                    <span className="text-xs text-slate-400">
+                      {fiche.class_name}
+                    </span>
+                  </div>
+
+                  <h2 className="mb-2 text-lg font-semibold">
+                    <Link
+                      href={`/fiches/${fiche.fiche_id}`}
+                      className="text-sky-300 hover:text-sky-200 hover:underline"
+                    >
+                      {fiche.title}
+                    </Link>
+                  </h2>
+
+                  <p className="mb-4 text-sm text-slate-300">
+                    {fiche.first_name} {fiche.last_name}
+                  </p>
+
+                  <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+                    <div className="mb-2 flex items-center justify-between gap-3">
+                      <span className="text-xs uppercase tracking-wide text-slate-500">
+                        Progression
+                      </span>
+
+                      <span className={`text-sm font-bold ${progress.text}`}>
+                        {score} %
+                      </span>
+                    </div>
+
+                    <div
+                      className={`h-3 overflow-hidden rounded-full ${progress.track}`}
+                    >
+                      <div
+                        className={`h-full rounded-full ${progress.bar}`}
+                        style={{
+                          width: `${Math.min(Math.max(score, 0), 100)}%`,
+                        }}
+                      />
+                    </div>
+
+                    <p className="mt-2 text-xs text-slate-400">
+                      Statut qualité :{" "}
+                      <span className={progress.text}>
+                        {fiche.quality_status ?? "non évalué"}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="grid gap-2 text-sm text-slate-300">
+                    <p>
+                      <span className="text-slate-500">Statut :</span>{" "}
+                      {fiche.status}
+                    </p>
+
+                    <p>
+                      <span className="text-slate-500">Commentaires :</span>{" "}
+                      {fiche.active_comments_count}
+                    </p>
+                  </div>
+
+                  <Link
+                    href={`/fiches/${fiche.fiche_id}`}
+                    className="mt-4 inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400"
+                  >
+                    Ouvrir la fiche
+                  </Link>
+                </article>
+              );
+            })}
+          </div>
+
+          <div className="hidden overflow-hidden rounded-xl border border-slate-800 md:block">
+            <table className="w-full border-collapse text-sm">
+              <thead className="bg-slate-900">
+                <tr>
+                  <th className="p-3 text-left">Classe</th>
+                  <th className="p-3 text-left">Élève</th>
+                  <th className="p-3 text-left">Épreuve</th>
+                  <th className="p-3 text-left">Fiche</th>
+                  <th className="p-3 text-left">Statut</th>
+                  <th className="p-3 text-left">Progression</th>
+                  <th className="p-3 text-left">Commentaires</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {filteredFiches.map((fiche) => {
+                  const score = Number(fiche.completion_score ?? 0);
+                  const progress = getProgressClasses(score);
+
+                  return (
+                    <tr
+                      key={fiche.fiche_id}
+                      className="border-t border-slate-800"
+                    >
+                      <td className="p-3">{fiche.class_name}</td>
+
+                      <td className="p-3">
+                        {fiche.first_name} {fiche.last_name}
+                      </td>
+
+                      <td className="p-3">{fiche.epreuve}</td>
+
+                      <td className="p-3">
+                        <Link
+                          href={`/fiches/${fiche.fiche_id}`}
+                          className="font-medium text-sky-300 hover:text-sky-200 hover:underline"
+                        >
+                          {fiche.title}
+                        </Link>
+                        <div className="text-slate-500">
+                          Fiche n°{fiche.numero_fiche}
+                        </div>
+                      </td>
+
+                      <td className="p-3">{fiche.status}</td>
+
+                      <td className="p-3">
+                        <div className="min-w-36">
+                          <div className="mb-1 flex items-center justify-between gap-2">
+                            <span className={`font-bold ${progress.text}`}>
+                              {score} %
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {fiche.quality_status}
+                            </span>
+                          </div>
+
+                          <div
+                            className={`h-2 overflow-hidden rounded-full ${progress.track}`}
+                          >
+                            <div
+                              className={`h-full rounded-full ${progress.bar}`}
+                              style={{
+                                width: `${Math.min(Math.max(score, 0), 100)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </td>
+
+                      <td className="p-3">{fiche.active_comments_count}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
