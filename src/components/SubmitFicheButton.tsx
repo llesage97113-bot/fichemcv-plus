@@ -10,6 +10,21 @@ type SubmitFicheButtonProps = {
   completionScore: number;
 };
 
+function getStatusLabel(status: string | null) {
+  switch (status) {
+    case "soumise":
+      return "Fiche déjà soumise";
+    case "validee":
+      return "Fiche validée";
+    case "verrouillee":
+      return "Fiche verrouillée";
+    case "archivee":
+      return "Fiche archivée";
+    default:
+      return null;
+  }
+}
+
 export default function SubmitFicheButton({
   ficheId,
   status,
@@ -33,12 +48,24 @@ export default function SubmitFicheButton({
 
   const isDisabled = isSubmitting || isAlreadySubmitted || isTooIncomplete;
 
+  const statusLabel = getStatusLabel(status);
+
+  const buttonLabel = isSubmitting
+    ? "Soumission en cours..."
+    : statusLabel
+      ? statusLabel
+      : isTooIncomplete
+        ? "Fiche incomplète"
+        : "Soumettre la fiche";
+
   async function handleSubmit() {
     setMessage(null);
 
     if (isAlreadySubmitted) {
       setMessageType("error");
-      setMessage("Cette fiche a déjà été soumise, validée, verrouillée ou archivée.");
+      setMessage(
+        "Cette fiche a déjà été soumise, validée, verrouillée ou archivée."
+      );
       return;
     }
 
@@ -89,7 +116,7 @@ export default function SubmitFicheButton({
         disabled={isDisabled}
         className="inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
       >
-        {isSubmitting ? "Soumission en cours..." : "Soumettre la fiche"}
+        {buttonLabel}
       </button>
 
       {isAlreadySubmitted && (
@@ -102,6 +129,7 @@ export default function SubmitFicheButton({
       {!isAlreadySubmitted && isTooIncomplete && (
         <p className="mt-3 text-xs text-amber-300">
           La fiche doit atteindre au moins 55 % de complétude avant soumission.
+          Score actuel : {completionScore} %.
         </p>
       )}
 
