@@ -18,7 +18,7 @@ function getTeacherStatusMessage(status: string | null) {
     case "corrigee":
       return "Cette fiche a été corrigée. Elle peut maintenant être validée.";
     case "validee":
-      return "Cette fiche est validée.";
+      return "Cette fiche est validée. Elle peut maintenant être verrouillée.";
     case "verrouillee":
       return "Cette fiche est verrouillée.";
     case "archivee":
@@ -43,12 +43,14 @@ export default function TeacherWorkflowActions({
   const canRequestCorrection = status === "soumise";
   const canMarkCorrected = status === "a_corriger";
   const canValidate = status === "corrigee";
+  const canLock = status === "validee";
 
   async function runWorkflowAction(
     rpcName:
       | "request_fiche_correction"
       | "mark_fiche_corrected"
-      | "validate_fiche",
+      | "validate_fiche"
+      | "lock_fiche",
     successMessage: string
   ) {
     setMessage(null);
@@ -131,7 +133,20 @@ export default function TeacherWorkflowActions({
           </button>
         )}
 
-        {!canRequestCorrection && !canMarkCorrected && !canValidate && (
+        {canLock && (
+          <button
+            type="button"
+            onClick={() =>
+              runWorkflowAction("lock_fiche", "La fiche a été verrouillée.")
+            }
+            disabled={isLoading}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+          >
+            {isLoading ? "Verrouillage en cours..." : "Verrouiller la fiche"}
+          </button>
+        )}
+
+        {!canRequestCorrection && !canMarkCorrected && !canValidate && !canLock && (
           <p className="text-xs text-slate-500">
             Aucune action professeur disponible à ce stade du workflow.
           </p>
