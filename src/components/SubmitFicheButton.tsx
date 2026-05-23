@@ -14,6 +14,8 @@ function getStatusLabel(status: string | null) {
   switch (status) {
     case "soumise":
       return "Fiche déjà soumise";
+    case "corrigee":
+      return "Fiche corrigée";
     case "validee":
       return "Fiche validée";
     case "verrouillee":
@@ -38,15 +40,17 @@ export default function SubmitFicheButton({
     "info"
   );
 
-  const isAlreadySubmitted =
+  const isWorkflowLocked =
     status === "soumise" ||
+    status === "corrigee" ||
     status === "validee" ||
     status === "verrouillee" ||
     status === "archivee";
 
+  const isCorrectionMode = status === "a_corriger";
   const isTooIncomplete = completionScore < 55;
 
-  const isDisabled = isSubmitting || isAlreadySubmitted || isTooIncomplete;
+  const isDisabled = isSubmitting || isWorkflowLocked || isTooIncomplete;
 
   const statusLabel = getStatusLabel(status);
 
@@ -56,16 +60,16 @@ export default function SubmitFicheButton({
       ? statusLabel
       : isTooIncomplete
         ? "Fiche incomplète"
-        : "Soumettre la fiche";
+        : isCorrectionMode
+          ? "Resoumettre la fiche"
+          : "Soumettre la fiche";
 
   async function handleSubmit() {
     setMessage(null);
 
-    if (isAlreadySubmitted) {
+    if (isWorkflowLocked) {
       setMessageType("error");
-      setMessage(
-        "Cette fiche a déjà été soumise, validée, verrouillée ou archivée."
-      );
+      setMessage("Cette fiche ne peut plus être soumise à ce stade du workflow.");
       return;
     }
 
@@ -92,7 +96,11 @@ export default function SubmitFicheButton({
     }
 
     setMessageType("success");
-    setMessage("La fiche a bien été soumise pour correction.");
+    setMessage(
+      isCorrectionMode
+        ? "La fiche a bien été resoumise après correction."
+        : "La fiche a bien été soumise pour correction."
+    );
 
     console.log("Soumission réussie :", data);
 
@@ -106,7 +114,9 @@ export default function SubmitFicheButton({
           Action sur la fiche
         </p>
         <p className="text-sm text-slate-300">
-          La soumission signalera que la fiche est prête pour correction.
+          {isCorrectionMode
+            ? "Après correction, tu peux renvoyer ta fiche au professeur."
+            : "La soumission signalera que la fiche est prête pour correction."}
         </p>
       </div>
 
@@ -119,23 +129,25 @@ export default function SubmitFicheButton({
         {buttonLabel}
       </button>
 
-      {isAlreadySubmitted && (
+      {isWorkflowLocked && (
         <p className="mt-3 text-xs text-amber-300">
           Cette fiche n’est plus modifiable librement car son statut actuel est :{" "}
           {status}.
         </p>
       )}
 
-      {!isAlreadySubmitted && isTooIncomplete && (
+      {!isWorkflowLocked && isTooIncomplete && (
         <p className="mt-3 text-xs text-amber-300">
           La fiche doit atteindre au moins 55 % de complétude avant soumission.
           Score actuel : {completionScore} %.
         </p>
       )}
 
-      {!isAlreadySubmitted && !isTooIncomplete && (
+      {!isWorkflowLocked && !isTooIncomplete && (
         <p className="mt-3 text-xs text-emerald-300">
-          La fiche peut être soumise pour correction.
+          {isCorrectionMode
+            ? "La fiche peut être resoumise après correction."
+            : "La fiche peut être soumise pour correction."}
         </p>
       )}
 
