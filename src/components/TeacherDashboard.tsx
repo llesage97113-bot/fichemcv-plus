@@ -114,6 +114,25 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     });
   }, [fiches, search, classFilter, statusFilter, completionFilter]);
 
+  const dashboardStats = useMemo(() => {
+    return {
+      total: fiches.length,
+      drafts: fiches.filter(
+        (fiche) =>
+          fiche.status === "non_commencee" || fiche.status === "brouillon"
+      ).length,
+      submitted: fiches.filter((fiche) => fiche.status === "soumise").length,
+      correction: fiches.filter((fiche) => fiche.status === "a_corriger").length,
+      final:
+        fiches.filter(
+          (fiche) =>
+            fiche.status === "validee" ||
+            fiche.status === "verrouillee" ||
+            fiche.status === "archivee"
+        ).length,
+    };
+  }, [fiches]);
+
   function resetFilters() {
     setSearch("");
     setClassFilter("all");
@@ -123,6 +142,53 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
 
   return (
     <>
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            Total
+          </p>
+          <p className="mt-1 text-2xl font-bold text-slate-100">
+            {dashboardStats.total}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            Brouillons
+          </p>
+          <p className="mt-1 text-2xl font-bold text-amber-300">
+            {dashboardStats.drafts}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            Soumises
+          </p>
+          <p className="mt-1 text-2xl font-bold text-sky-300">
+            {dashboardStats.submitted}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            À corriger
+          </p>
+          <p className="mt-1 text-2xl font-bold text-orange-300">
+            {dashboardStats.correction}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+          <p className="text-xs uppercase tracking-wide text-slate-500">
+            Finalisées
+          </p>
+          <p className="mt-1 text-2xl font-bold text-emerald-300">
+            {dashboardStats.final}
+          </p>
+        </div>
+      </section>
+
       <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
