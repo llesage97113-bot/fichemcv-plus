@@ -122,10 +122,7 @@ export default function TeacherWorkflowActions({
           <button
             type="button"
             onClick={() =>
-              runWorkflowAction(
-                "validate_fiche",
-                "La fiche a été validée."
-              )
+              runWorkflowAction("validate_fiche", "La fiche a été validée.")
             }
             disabled={isLoading}
             className="inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
