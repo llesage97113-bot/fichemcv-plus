@@ -14,9 +14,9 @@ function getTeacherStatusMessage(status: string | null) {
     case "soumise":
       return "Cette fiche a été soumise. Le professeur peut demander des corrections.";
     case "a_corriger":
-      return "Cette fiche a été renvoyée à l’élève pour correction.";
+      return "Cette fiche est revenue en phase de correction.";
     case "corrigee":
-      return "Cette fiche a été corrigée.";
+      return "Cette fiche a été corrigée. Elle peut maintenant être validée.";
     case "validee":
       return "Cette fiche est validée.";
     case "verrouillee":
@@ -41,12 +41,16 @@ export default function TeacherWorkflowActions({
   );
 
   const canRequestCorrection = status === "soumise";
+  const canMarkCorrected = status === "a_corriger";
 
-  async function handleRequestCorrection() {
+  async function runWorkflowAction(
+    rpcName: "request_fiche_correction" | "mark_fiche_corrected",
+    successMessage: string
+  ) {
     setMessage(null);
     setIsLoading(true);
 
-    const { data, error } = await supabase.rpc("request_fiche_correction", {
+    const { data, error } = await supabase.rpc(rpcName, {
       p_fiche_id: ficheId,
     });
 
@@ -58,10 +62,10 @@ export default function TeacherWorkflowActions({
       return;
     }
 
-    console.log("Correction demandée :", data);
+    console.log("Action workflow réussie :", data);
 
     setMessageType("success");
-    setMessage("La fiche a été renvoyée à l’élève pour correction.");
+    setMessage(successMessage);
 
     router.refresh();
   }
@@ -77,20 +81,45 @@ export default function TeacherWorkflowActions({
         </p>
       </div>
 
-      {canRequestCorrection ? (
-        <button
-          type="button"
-          onClick={handleRequestCorrection}
-          disabled={isLoading}
-          className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
-        >
-          {isLoading ? "Renvoi en cours..." : "Renvoyer en correction"}
-        </button>
-      ) : (
-        <p className="text-xs text-slate-500">
-          Cette action sera disponible lorsque la fiche sera au statut soumise.
-        </p>
-      )}
+      <div className="flex flex-col gap-2 sm:flex-row">
+        {canRequestCorrection && (
+          <button
+            type="button"
+            onClick={() =>
+              runWorkflowAction(
+                "request_fiche_correction",
+                "La fiche a été renvoyée à l’élève pour correction."
+              )
+            }
+            disabled={isLoading}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+          >
+            {isLoading ? "Renvoi en cours..." : "Renvoyer en correction"}
+          </button>
+        )}
+
+        {canMarkCorrected && (
+          <button
+            type="button"
+            onClick={() =>
+              runWorkflowAction(
+                "mark_fiche_corrected",
+                "La fiche a été marquée comme corrigée."
+              )
+            }
+            disabled={isLoading}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+          >
+            {isLoading ? "Traitement en cours..." : "Marquer comme corrigée"}
+          </button>
+        )}
+
+        {!canRequestCorrection && !canMarkCorrected && (
+          <p className="text-xs text-slate-500">
+            Aucune action professeur disponible à ce stade du workflow.
+          </p>
+        )}
+      </div>
 
       {message && (
         <p
