@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import SectionEditor from "@/components/SectionEditor";
 import SubmitFicheButton from "@/components/SubmitFicheButton";
+import AppNavigation from "@/components/AppNavigation";
 
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
@@ -137,6 +138,7 @@ export default async function StudentFicheDetailPage({
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
+        <AppNavigation />
       <section className="mx-auto max-w-5xl">
         <Link
           href="/eleve"
