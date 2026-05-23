@@ -92,23 +92,29 @@ export default async function StudentDashboardPage() {
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
       <section className="mx-auto max-w-5xl">
         <header className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm sm:p-6">
-          <div className="mb-3">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="mb-2 text-sm uppercase tracking-wide text-sky-300">
+                FicheMCV+ Élève
+              </p>
+
+              <h1 className="text-3xl font-bold sm:text-4xl">
+                Bonjour Emma MARTIN
+              </h1>
+            </div>
+
             <Link
               href="/"
-              className="inline-flex items-center rounded-lg border border-slate-800 px-3 py-2 text-sm text-sky-300 hover:bg-slate-900 hover:text-sky-200"
+              className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100"
             >
-              ← Retour espace professeur
+              Accès professeur prototype
             </Link>
           </div>
 
-          <p className="mb-2 text-sm uppercase tracking-wide text-slate-500">
-            Espace élève — prototype
-          </p>
-
-          <h1 className="text-3xl font-bold sm:text-4xl">Bonjour Emma</h1>
-
-          <p className="mt-2 text-sm text-slate-400 sm:text-base">
+          <p className="text-sm leading-6 text-slate-400 sm:text-base">
             Retrouve ici tes fiches, leur état d’avancement et les actions à réaliser.
+            Les fiches soumises, validées, verrouillées ou archivées restent consultables
+            en lecture seule.
           </p>
         </header>
 
