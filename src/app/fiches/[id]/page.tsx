@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import SectionEditor from "@/components/SectionEditor";
+import SubmitFicheButton from "@/components/SubmitFicheButton";
 
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
@@ -119,7 +120,7 @@ export default async function FicheDetailPage({
             </div>
           </div>
 
-          <div className="grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
+          <div className="mb-4 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
             <div className="rounded-xl bg-slate-950/60 p-3">
               <p className="text-xs uppercase tracking-wide text-slate-500">
                 Élève
@@ -152,6 +153,12 @@ export default async function FicheDetailPage({
               <p className="truncate font-mono text-xs text-slate-300">{id}</p>
             </div>
           </div>
+
+          <SubmitFicheButton
+            ficheId={id}
+            status={fiche.status}
+            completionScore={completionScore}
+          />
         </header>
 
         {sectionsError && (
