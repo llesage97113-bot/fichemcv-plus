@@ -20,7 +20,7 @@ function getTeacherStatusMessage(status: string | null) {
     case "validee":
       return "Cette fiche est validée. Elle peut maintenant être verrouillée.";
     case "verrouillee":
-      return "Cette fiche est verrouillée.";
+      return "Cette fiche est verrouillée. Elle peut maintenant être archivée.";
     case "archivee":
       return "Cette fiche est archivée.";
     default:
@@ -44,13 +44,15 @@ export default function TeacherWorkflowActions({
   const canMarkCorrected = status === "a_corriger";
   const canValidate = status === "corrigee";
   const canLock = status === "validee";
+  const canArchive = status === "verrouillee";
 
   async function runWorkflowAction(
     rpcName:
       | "request_fiche_correction"
       | "mark_fiche_corrected"
       | "validate_fiche"
-      | "lock_fiche",
+      | "lock_fiche"
+      | "archive_fiche",
     successMessage: string
   ) {
     setMessage(null);
@@ -146,11 +148,28 @@ export default function TeacherWorkflowActions({
           </button>
         )}
 
-        {!canRequestCorrection && !canMarkCorrected && !canValidate && !canLock && (
-          <p className="text-xs text-slate-500">
-            Aucune action professeur disponible à ce stade du workflow.
-          </p>
+        {canArchive && (
+          <button
+            type="button"
+            onClick={() =>
+              runWorkflowAction("archive_fiche", "La fiche a été archivée.")
+            }
+            disabled={isLoading}
+            className="inline-flex w-full items-center justify-center rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+          >
+            {isLoading ? "Archivage en cours..." : "Archiver la fiche"}
+          </button>
         )}
+
+        {!canRequestCorrection &&
+          !canMarkCorrected &&
+          !canValidate &&
+          !canLock &&
+          !canArchive && (
+            <p className="text-xs text-slate-500">
+              Aucune action professeur disponible à ce stade du workflow.
+            </p>
+          )}
       </div>
 
       {message && (
