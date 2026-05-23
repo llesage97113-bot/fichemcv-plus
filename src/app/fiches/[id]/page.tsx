@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import SectionEditor from "@/components/SectionEditor";
 import SubmitFicheButton from "@/components/SubmitFicheButton";
+import TeacherWorkflowActions from "@/components/TeacherWorkflowActions";
 
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
@@ -160,11 +161,18 @@ export default async function FicheDetailPage({
             </div>
           </div>
 
-          <SubmitFicheButton
-            ficheId={id}
-            status={fiche.status}
-            completionScore={completionScore}
-          />
+          <div className="grid gap-4 lg:grid-cols-2">
+            <SubmitFicheButton
+              ficheId={id}
+              status={fiche.status}
+              completionScore={completionScore}
+            />
+
+            <TeacherWorkflowActions
+              ficheId={id}
+              status={fiche.status}
+            />
+          </div>
         </header>
 
         {sectionsError && (
