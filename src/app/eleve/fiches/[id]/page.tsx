@@ -59,6 +59,25 @@ function getStatusLabel(status: string | null) {
   }
 }
 
+function getStatusClasses(status: string | null) {
+  switch (status) {
+    case "soumise":
+      return "bg-sky-500/10 text-sky-300 border-sky-400/40";
+    case "a_corriger":
+      return "bg-amber-500/10 text-amber-300 border-amber-400/40";
+    case "corrigee":
+      return "bg-emerald-500/10 text-emerald-300 border-emerald-400/40";
+    case "validee":
+      return "bg-green-500/10 text-green-300 border-green-400/40";
+    case "verrouillee":
+      return "bg-slate-200/10 text-slate-200 border-slate-400/40";
+    case "archivee":
+      return "bg-indigo-500/10 text-indigo-300 border-indigo-400/40";
+    default:
+      return "bg-slate-800 text-slate-300 border-slate-700";
+  }
+}
+
 function getStudentStatusHelp(status: string | null) {
   switch (status) {
     case "non_commencee":
@@ -140,7 +159,11 @@ export default async function StudentFicheDetailPage({
               Fiche n°{fiche.numero_fiche}
             </span>
 
-            <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                fiche.status
+              )}`}
+            >
               {getStatusLabel(fiche.status)}
             </span>
           </div>
