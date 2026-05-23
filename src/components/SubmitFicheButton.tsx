@@ -1,5 +1,9 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
+
 type SubmitFicheButtonProps = {
   ficheId: string;
   status: string | null;
@@ -11,32 +15,61 @@ export default function SubmitFicheButton({
   status,
   completionScore,
 }: SubmitFicheButtonProps) {
+  const router = useRouter();
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [messageType, setMessageType] = useState<"success" | "error" | "info">(
+    "info"
+  );
+
   const isAlreadySubmitted =
-    status === "submitted" ||
-    status === "validated" ||
-    status === "locked" ||
-    status === "archived";
+    status === "soumise" ||
+    status === "validee" ||
+    status === "verrouillee" ||
+    status === "archivee";
 
   const isTooIncomplete = completionScore < 55;
 
-  const isDisabled = isAlreadySubmitted || isTooIncomplete;
+  const isDisabled = isSubmitting || isAlreadySubmitted || isTooIncomplete;
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    setMessage(null);
+
     if (isAlreadySubmitted) {
-      alert("Cette fiche a déjà été soumise ou verrouillée.");
+      setMessageType("error");
+      setMessage("Cette fiche a déjà été soumise, validée, verrouillée ou archivée.");
       return;
     }
 
     if (isTooIncomplete) {
-      alert(
+      setMessageType("error");
+      setMessage(
         "La fiche semble encore trop incomplète pour être soumise. Complète d'abord les sections essentielles."
       );
       return;
     }
 
-    alert(
-      `Prototype : la fiche ${ficheId} pourra bientôt être soumise via Supabase.`
-    );
+    setIsSubmitting(true);
+
+    const { data, error } = await supabase.rpc("submit_fiche", {
+      p_fiche_id: ficheId,
+    });
+
+    setIsSubmitting(false);
+
+    if (error) {
+      setMessageType("error");
+      setMessage(error.message);
+      return;
+    }
+
+    setMessageType("success");
+    setMessage("La fiche a bien été soumise pour correction.");
+
+    console.log("Soumission réussie :", data);
+
+    router.refresh();
   }
 
   return (
@@ -56,13 +89,12 @@ export default function SubmitFicheButton({
         disabled={isDisabled}
         className="inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
       >
-        Soumettre la fiche
+        {isSubmitting ? "Soumission en cours..." : "Soumettre la fiche"}
       </button>
 
       {isAlreadySubmitted && (
         <p className="mt-3 text-xs text-amber-300">
-          Cette fiche n’est plus modifiable librement car son statut actuel est :
-          {" "}
+          Cette fiche n’est plus modifiable librement car son statut actuel est :{" "}
           {status}.
         </p>
       )}
@@ -76,6 +108,20 @@ export default function SubmitFicheButton({
       {!isAlreadySubmitted && !isTooIncomplete && (
         <p className="mt-3 text-xs text-emerald-300">
           La fiche peut être soumise pour correction.
+        </p>
+      )}
+
+      {message && (
+        <p
+          className={`mt-3 text-sm ${
+            messageType === "success"
+              ? "text-emerald-300"
+              : messageType === "error"
+                ? "text-red-300"
+                : "text-slate-300"
+          }`}
+        >
+          {message}
         </p>
       )}
     </div>
