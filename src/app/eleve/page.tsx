@@ -154,84 +154,139 @@ export default async function StudentDashboardPage() {
         )}
 
         {!error && data && data.length > 0 && (
-          <div className="grid gap-4">
-            {data.map((fiche) => {
-              const score = Number(fiche.completion_score ?? 0);
-              const progress = getProgressClasses(score);
+          <>
+            <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Total
+                </p>
+                <p className="mt-1 text-2xl font-bold text-slate-100">
+                  {data.length}
+                </p>
+              </div>
 
-              return (
-                <article
-                  key={fiche.fiche_id}
-                  className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm"
-                >
-                  <div className="mb-3 flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">
-                      {fiche.epreuve}
-                    </span>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  À compléter
+                </p>
+                <p className="mt-1 text-2xl font-bold text-amber-300">
+                  {
+                    data.filter(
+                      (fiche) =>
+                        fiche.status === "non_commencee" ||
+                        fiche.status === "brouillon"
+                    ).length
+                  }
+                </p>
+              </div>
 
-                    <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
-                      Fiche n°{fiche.numero_fiche}
-                    </span>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  À corriger
+                </p>
+                <p className="mt-1 text-2xl font-bold text-orange-300">
+                  {data.filter((fiche) => fiche.status === "a_corriger").length}
+                </p>
+              </div>
 
-                    <span
-                      className={`rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(
-                        fiche.status
-                      )}`}
-                    >
-                      {getStatusLabel(fiche.status)}
-                    </span>
-                  </div>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Validées
+                </p>
+                <p className="mt-1 text-2xl font-bold text-green-300">
+                  {data.filter((fiche) => fiche.status === "validee").length}
+                </p>
+              </div>
 
-                  <div className="mb-4 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
-                    <div>
-                      <h2 className="text-xl font-semibold text-slate-100">
-                        {fiche.title}
-                      </h2>
+              <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Archivées
+                </p>
+                <p className="mt-1 text-2xl font-bold text-indigo-300">
+                  {data.filter((fiche) => fiche.status === "archivee").length}
+                </p>
+              </div>
+            </section>
 
-                      <p className="mt-2 text-sm leading-6 text-slate-400">
-                        {getStatusHelp(fiche.status)}
+            <div className="grid gap-4">
+              {data.map((fiche) => {
+                const score = Number(fiche.completion_score ?? 0);
+                const progress = getProgressClasses(score);
+
+                return (
+                  <article
+                    key={fiche.fiche_id}
+                    className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm"
+                  >
+                    <div className="mb-3 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">
+                        {fiche.epreuve}
+                      </span>
+
+                      <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
+                        Fiche n°{fiche.numero_fiche}
+                      </span>
+
+                      <span
+                        className={`rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                          fiche.status
+                        )}`}
+                      >
+                        {getStatusLabel(fiche.status)}
+                      </span>
+                    </div>
+
+                    <div className="mb-4 grid gap-4 lg:grid-cols-[1fr_auto] lg:items-start">
+                      <div>
+                        <h2 className="text-xl font-semibold text-slate-100">
+                          {fiche.title}
+                        </h2>
+
+                        <p className="mt-2 text-sm leading-6 text-slate-400">
+                          {getStatusHelp(fiche.status)}
+                        </p>
+                      </div>
+
+                      <Link
+                        href={`/eleve/fiches/${fiche.fiche_id}`}
+                        className="inline-flex items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400"
+                      >
+                        Ouvrir ma fiche
+                      </Link>
+                    </div>
+
+                    <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
+                      <div className="mb-2 flex items-center justify-between gap-3">
+                        <span className="text-xs uppercase tracking-wide text-slate-500">
+                          Progression
+                        </span>
+
+                        <span className={`text-sm font-bold ${progress.text}`}>
+                          {score} %
+                        </span>
+                      </div>
+
+                      <div className={`h-3 overflow-hidden rounded-full ${progress.track}`}>
+                        <div
+                          className={`h-full rounded-full ${progress.bar}`}
+                          style={{
+                            width: `${Math.min(Math.max(score, 0), 100)}%`,
+                          }}
+                        />
+                      </div>
+
+                      <p className="mt-2 text-xs text-slate-400">
+                        Niveau actuel :{" "}
+                        <span className={progress.text}>
+                          {fiche.quality_status ?? "non évalué"}
+                        </span>
                       </p>
                     </div>
-
-                    <Link
-                      href={`/eleve/fiches/${fiche.fiche_id}`}
-                      className="inline-flex items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400"
-                    >
-                      Ouvrir ma fiche
-                    </Link>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-3">
-                    <div className="mb-2 flex items-center justify-between gap-3">
-                      <span className="text-xs uppercase tracking-wide text-slate-500">
-                        Progression
-                      </span>
-
-                      <span className={`text-sm font-bold ${progress.text}`}>
-                        {score} %
-                      </span>
-                    </div>
-
-                    <div className={`h-3 overflow-hidden rounded-full ${progress.track}`}>
-                      <div
-                        className={`h-full rounded-full ${progress.bar}`}
-                        style={{
-                          width: `${Math.min(Math.max(score, 0), 100)}%`,
-                        }}
-                      />
-                    </div>
-
-                    <p className="mt-2 text-xs text-slate-400">
-                      Niveau actuel :{" "}
-                      <span className={progress.text}>
-                        {fiche.quality_status ?? "non évalué"}
-                      </span>
-                    </p>
-                  </div>
-                </article>
-              );
-            })}
-          </div>
+                  </article>
+                );
+              })}
+            </div>
+          </>
         )}
       </section>
     </main>
