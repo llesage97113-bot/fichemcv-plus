@@ -42,9 +42,13 @@ export default function TeacherWorkflowActions({
 
   const canRequestCorrection = status === "soumise";
   const canMarkCorrected = status === "a_corriger";
+  const canValidate = status === "corrigee";
 
   async function runWorkflowAction(
-    rpcName: "request_fiche_correction" | "mark_fiche_corrected",
+    rpcName:
+      | "request_fiche_correction"
+      | "mark_fiche_corrected"
+      | "validate_fiche",
     successMessage: string
   ) {
     setMessage(null);
@@ -81,7 +85,7 @@ export default function TeacherWorkflowActions({
         </p>
       </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
         {canRequestCorrection && (
           <button
             type="button"
@@ -114,7 +118,23 @@ export default function TeacherWorkflowActions({
           </button>
         )}
 
-        {!canRequestCorrection && !canMarkCorrected && (
+        {canValidate && (
+          <button
+            type="button"
+            onClick={() =>
+              runWorkflowAction(
+                "validate_fiche",
+                "La fiche a été validée."
+              )
+            }
+            disabled={isLoading}
+            className="inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+          >
+            {isLoading ? "Validation en cours..." : "Valider la fiche"}
+          </button>
+        )}
+
+        {!canRequestCorrection && !canMarkCorrected && !canValidate && (
           <p className="text-xs text-slate-500">
             Aucune action professeur disponible à ce stade du workflow.
           </p>
