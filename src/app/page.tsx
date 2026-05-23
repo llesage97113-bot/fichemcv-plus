@@ -1,6 +1,7 @@
 import Link from "next/link";
 import TeacherDashboard from "@/components/TeacherDashboard";
 import { supabase } from "@/lib/supabaseClient";
+import AppNavigation from "@/components/AppNavigation";
 
 export default async function Home() {
   const { data, error } = await supabase
@@ -11,6 +12,8 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
+<AppNavigation />
+
       <section className="mx-auto max-w-6xl">
         <header className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div>
