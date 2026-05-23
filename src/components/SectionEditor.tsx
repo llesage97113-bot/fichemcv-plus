@@ -16,6 +16,7 @@ type SectionEditorProps = {
     character_count: number;
     is_core?: boolean | null;
   };
+  isReadOnly?: boolean;
 };
 
 function getStatusLabel(status: string) {
@@ -91,7 +92,11 @@ function getStatusClasses(status: string) {
   };
 }
 
-function getSaveMessage(saveState: SaveState) {
+function getSaveMessage(saveState: SaveState, isReadOnly: boolean) {
+  if (isReadOnly) {
+    return "Lecture seule : cette fiche n’est plus modifiable librement.";
+  }
+
   if (saveState === "dirty") return "Modification en cours…";
   if (saveState === "saving") return "Sauvegarde automatique…";
   if (saveState === "saved") return "Sauvegardé automatiquement";
@@ -99,7 +104,8 @@ function getSaveMessage(saveState: SaveState) {
   return "La sauvegarde automatique se déclenche après quelques secondes d’inactivité.";
 }
 
-function getSaveMessageClass(saveState: SaveState) {
+function getSaveMessageClass(saveState: SaveState, isReadOnly: boolean) {
+  if (isReadOnly) return "text-amber-300";
   if (saveState === "dirty") return "text-amber-300";
   if (saveState === "saving") return "text-sky-300";
   if (saveState === "saved") return "text-emerald-300";
@@ -107,7 +113,10 @@ function getSaveMessageClass(saveState: SaveState) {
   return "text-slate-400";
 }
 
-export default function SectionEditor({ section }: SectionEditorProps) {
+export default function SectionEditor({
+  section,
+  isReadOnly = false,
+}: SectionEditorProps) {
   const [content, setContent] = useState(section.content ?? "");
   const [status, setStatus] = useState(section.completion_status);
   const [characterCount, setCharacterCount] = useState(
@@ -121,6 +130,12 @@ export default function SectionEditor({ section }: SectionEditorProps) {
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   async function saveSection(nextContent: string) {
+    if (isReadOnly) {
+      setSaveState("error");
+      setErrorMessage("Cette fiche est en lecture seule et ne peut plus être modifiée.");
+      return;
+    }
+
     setSaveState("saving");
     setErrorMessage(null);
 
@@ -149,6 +164,10 @@ export default function SectionEditor({ section }: SectionEditorProps) {
   }
 
   useEffect(() => {
+    if (isReadOnly) {
+      return;
+    }
+
     if (content === initialContentRef.current) {
       return;
     }
@@ -168,7 +187,7 @@ export default function SectionEditor({ section }: SectionEditorProps) {
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [content]);
+  }, [content, isReadOnly]);
 
   return (
     <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm sm:p-5">
@@ -178,6 +197,12 @@ export default function SectionEditor({ section }: SectionEditorProps) {
             {section.is_core && (
               <span className="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">
                 Section centrale
+              </span>
+            )}
+
+            {isReadOnly && (
+              <span className="rounded-full border border-amber-400/50 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-300">
+                Lecture seule
               </span>
             )}
 
@@ -214,6 +239,14 @@ export default function SectionEditor({ section }: SectionEditorProps) {
         </div>
       )}
 
+      {isReadOnly && (
+        <div className="mb-4 rounded-xl border border-amber-400/40 bg-amber-950/30 p-3 text-amber-100">
+          <p className="text-sm">
+            Cette fiche a été soumise ou verrouillée. Les sections sont désormais consultables en lecture seule.
+          </p>
+        </div>
+      )}
+
       <div className={`mb-4 rounded-xl border p-3 ${statusClasses.box}`}>
         <p className="text-sm">{getStatusHelp(status)}</p>
       </div>
@@ -225,15 +258,21 @@ export default function SectionEditor({ section }: SectionEditorProps) {
           setContent(nextContent);
           setCharacterCount(nextContent.trim().length);
         }}
+        disabled={isReadOnly}
         rows={8}
-        className="min-h-40 w-full rounded-xl border border-slate-700 bg-slate-950/70 p-4 text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400 sm:text-base"
+        className="min-h-40 w-full rounded-xl border border-slate-700 bg-slate-950/70 p-4 text-sm leading-7 text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400 disabled:cursor-not-allowed disabled:bg-slate-900/80 disabled:text-slate-400 sm:text-base"
         placeholder="Rédige ta réponse ici..."
       />
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <p className={`text-sm font-medium ${getSaveMessageClass(saveState)}`}>
-            {getSaveMessage(saveState)}
+          <p
+            className={`text-sm font-medium ${getSaveMessageClass(
+              saveState,
+              isReadOnly
+            )}`}
+          >
+            {getSaveMessage(saveState, isReadOnly)}
           </p>
 
           {errorMessage && (
@@ -241,14 +280,16 @@ export default function SectionEditor({ section }: SectionEditorProps) {
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={() => saveSection(content)}
-          disabled={saveState === "saving"}
-          className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {saveState === "saving" ? "Sauvegarde..." : "Sauvegarder maintenant"}
-        </button>
+        {!isReadOnly && (
+          <button
+            type="button"
+            onClick={() => saveSection(content)}
+            disabled={saveState === "saving"}
+            className="rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {saveState === "saving" ? "Sauvegarde..." : "Sauvegarder maintenant"}
+          </button>
+        )}
       </div>
     </article>
   );

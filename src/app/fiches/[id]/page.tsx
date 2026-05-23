@@ -62,6 +62,12 @@ export default async function FicheDetailPage({
   const completionScore = Number(fiche.completion_score ?? 0);
   const progressClasses = getGlobalProgressClasses(completionScore);
 
+  const isReadOnly =
+    fiche.status === "soumise" ||
+    fiche.status === "validee" ||
+    fiche.status === "verrouillee" ||
+    fiche.status === "archivee";
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
       <section className="mx-auto max-w-5xl">
@@ -182,7 +188,11 @@ export default async function FicheDetailPage({
         {!sectionsError && sections && sections.length > 0 && (
           <div className="space-y-4">
             {sections.map((section) => (
-              <SectionEditor key={section.id} section={section} />
+              <SectionEditor
+                key={section.id}
+                section={section}
+                isReadOnly={isReadOnly}
+              />
             ))}
           </div>
         )}
