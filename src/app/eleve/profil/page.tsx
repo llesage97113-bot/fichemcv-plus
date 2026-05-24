@@ -42,11 +42,12 @@ export default async function StudentProfilePage() {
     if (appUserError || !appUser) {
       studentErrorMessage = "Aucun profil élève actif n’est associé à ce compte.";
     } else {
-      const { data: connectedStudent, error: connectedStudentError } = await supabase
-        .from("students")
-        .select("id, first_name, last_name, candidate_number, student_code")
-        .eq("user_id", appUser.id)
-        .single();
+      const { data: connectedStudent, error: connectedStudentError } =
+        await supabase
+          .from("students")
+          .select("id, first_name, last_name, candidate_number, student_code")
+          .eq("user_id", appUser.id)
+          .single();
 
       student = connectedStudent;
 
