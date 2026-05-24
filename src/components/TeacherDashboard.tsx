@@ -204,54 +204,40 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
 
   return (
     <>
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">
-            Total
-          </p>
-          <p className="mt-1 text-2xl font-bold text-slate-100">
-            {dashboardStats.total}
-          </p>
-        </div>
-
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">
-            Brouillons
-          </p>
-          <p className="mt-1 text-2xl font-bold text-amber-300">
-            {dashboardStats.drafts}
+      <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-100">
+            Vue d’ensemble
+          </h2>
+          <p className="text-sm text-slate-400">
+            Synthèse rapide de l’état des fiches suivies.
           </p>
         </div>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">
-            Soumises
-          </p>
-          <p className="mt-1 text-2xl font-bold text-sky-300">
-            {dashboardStats.submitted}
-          </p>
-        </div>
+        <div className="flex flex-wrap gap-2 text-xs font-medium">
+          <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-slate-300">
+            Total : <span className="font-bold text-slate-100">{dashboardStats.total}</span>
+          </span>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">
-            À corriger
-          </p>
-          <p className="mt-1 text-2xl font-bold text-orange-300">
-            {dashboardStats.correction}
-          </p>
-        </div>
+          <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-amber-200">
+            Brouillons : <span className="font-bold text-amber-200">{dashboardStats.drafts}</span>
+          </span>
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
-          <p className="text-xs uppercase tracking-wide text-slate-500">
-            Finalisées
-          </p>
-          <p className="mt-1 text-2xl font-bold text-emerald-300">
-            {dashboardStats.final}
-          </p>
+          <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
+            Soumises : <span className="font-bold text-sky-200">{dashboardStats.submitted}</span>
+          </span>
+
+          <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-orange-200">
+            À corriger : <span className="font-bold text-orange-200">{dashboardStats.correction}</span>
+          </span>
+
+          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+            Finalisées : <span className="font-bold text-emerald-200">{dashboardStats.final}</span>
+          </span>
         </div>
       </section>
 
-              <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm">
+              <section className="mb-8 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
         <div className="mb-3">
           <h2 className="text-lg font-semibold text-slate-100">
             Cycle de traitement des fiches
@@ -282,104 +268,109 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         </p>
       </section>
 
-<section
-        className={`mb-8 rounded-2xl border p-5 ${
-          priorityFiches.length > 0
-            ? "border-amber-500/30 bg-amber-500/10"
-            : "border-emerald-500/30 bg-emerald-500/10"
-        }`}
-      >
+<section className="mb-8 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
         <div className="mb-5">
-          <h2
-            className={`text-xl font-semibold ${
-              priorityFiches.length > 0 ? "text-amber-200" : "text-emerald-200"
-            }`}
-          >
+          <h2 className="text-lg font-semibold text-slate-100">
             Actions professeur — {priorityFiches.length} fiche(s) à traiter
           </h2>
-          <p
-            className={`text-sm ${
-              priorityFiches.length > 0
-                ? "text-amber-100/80"
-                : "text-emerald-100/80"
-            }`}
-          >
+          <p className="text-sm text-slate-400">
             {priorityFiches.length > 0
               ? "Les fiches sont regroupées selon l’action attendue dans le workflow."
               : "Aucune action urgente actuellement : toutes les fiches sont à jour dans le workflow."}
           </p>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-4">
-          {priorityGroups.map((group) => (
-            <div
-              key={group.status}
-              className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
-            >
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-slate-100">
-                    {group.title}
-                  </h3>
-                  <p className="mt-1 text-xs leading-5 text-slate-400">
-                    {group.description}
-                  </p>
+        {priorityFiches.length === 0 && (
+          <div className="rounded-2xl border border-emerald-400/20 bg-slate-950/60 p-4">
+            <p className="mb-3 text-sm font-medium text-emerald-100">
+              ✅ Toutes les fiches sont à jour dans le workflow.
+            </p>
+
+            <div className="flex flex-wrap gap-2">
+              {priorityGroups.map((group) => (
+                <span
+                  key={group.status}
+                  className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300"
+                >
+                  {group.title} : {group.items.length}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {priorityFiches.length > 0 && (
+          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+            {priorityGroups.map((group) => (
+              <div
+                key={group.status}
+                className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+              >
+                <div className="mb-3 flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-slate-100">
+                      {group.title}
+                    </h3>
+                    <p className="mt-1 text-xs leading-5 text-slate-400">
+                      {group.description}
+                    </p>
+                  </div>
+
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                      group.items.length > 0
+                        ? "bg-amber-400/15 text-amber-200"
+                        : "bg-slate-800 text-slate-400"
+                    }`}
+                  >
+                    {group.items.length}
+                  </span>
                 </div>
 
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                    group.items.length > 0
-                      ? "bg-amber-400/15 text-amber-200"
-                      : "bg-slate-800 text-slate-400"
-                  }`}
-                >
-                  {group.items.length}
-                </span>
-              </div>
+                {group.items.length === 0 && (
+                  <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-500">
+                    Aucune fiche.
+                  </p>
+                )}
 
-              {group.items.length === 0 && (
-                <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-500">
-                  Aucune fiche.
-                </p>
-              )}
+                {group.items.length > 0 && (
+                  <div className="space-y-3">
+                    {group.items.map((fiche) => (
+                      <Link
+                        key={fiche.fiche_id}
+                        href={`/fiches/${fiche.fiche_id}`}
+                        className="block rounded-xl border border-slate-800 bg-slate-900/80 p-3 transition hover:border-amber-300/60 hover:bg-slate-900"
+                      >
+                        <div className="mb-2 flex items-start justify-between gap-2">
+                          <div>
+                            <p className="font-medium text-slate-100">
+                              {fiche.first_name} {fiche.last_name}
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              {fiche.epreuve} · Fiche n°{fiche.numero_fiche}
+                            </p>
+                          </div>
 
-              {group.items.length > 0 && (
-                <div className="space-y-3">
-                  {group.items.map((fiche) => (
-                    <Link
-                      key={fiche.fiche_id}
-                      href={`/fiches/${fiche.fiche_id}`}
-                      className="block rounded-xl border border-slate-800 bg-slate-900/80 p-3 transition hover:border-amber-300/60 hover:bg-slate-900"
-                    >
-                      <div className="mb-2 flex items-start justify-between gap-2">
-                        <div>
-                          <p className="font-medium text-slate-100">
-                            {fiche.first_name} {fiche.last_name}
-                          </p>
-                          <p className="text-xs text-slate-500">
-                            {fiche.epreuve} · Fiche n°{fiche.numero_fiche}
-                          </p>
+                          <span className="rounded-full bg-amber-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+                            {getPriorityLabel(fiche.status ?? "")}
+                          </span>
                         </div>
 
-                        <span className="rounded-full bg-amber-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
-                          {getPriorityLabel(fiche.status ?? "")}
-                        </span>
-                      </div>
+                        <p className="text-sm text-slate-400">
+                          Complétude : {fiche.completion_score ?? 0} %
+                        </p>
 
-                      <p className="text-sm text-slate-400">
-                        Complétude : {fiche.completion_score ?? 0} %
-                      </p>
-
-                      <p className="mt-1 text-xs leading-5 text-amber-100/80">
-                        {getPriorityActionLabel(fiche.status ?? "")}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
+                        <p className="mt-1 text-xs leading-5 text-amber-100/80">
+                          {getPriorityActionLabel(fiche.status ?? "")}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm">

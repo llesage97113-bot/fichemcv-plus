@@ -1,4 +1,3 @@
-import Link from "next/link";
 import TeacherDashboard from "@/components/TeacherDashboard";
 import { supabase } from "@/lib/supabaseClient";
 import AppNavigation from "@/components/AppNavigation";
@@ -23,16 +22,10 @@ export default async function Home() {
             <h1 className="mb-2 text-3xl font-bold sm:text-4xl">FicheMCV+</h1>
 
             <p className="text-sm text-slate-400 sm:text-base">
-              Tableau de bord professeur — prototype connecté à Supabase
+              Tableau de bord professeur — suivi des fiches MCV
             </p>
           </div>
 
-          <Link
-            href="/eleve"
-            className="inline-flex items-center justify-center rounded-lg border border-sky-500/40 bg-sky-500/10 px-4 py-2 text-sm font-semibold text-sky-300 hover:bg-sky-500/20 hover:text-sky-200"
-          >
-            Voir l’espace élève prototype
-          </Link>
         </header>
 
         {error && (

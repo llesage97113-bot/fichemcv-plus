@@ -2,14 +2,18 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 type UserRole = "professeur" | "eleve" | null;
 
 export default function AppNavigation() {
   const router = useRouter();
+  const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
+
+  const isTeacherSpace = pathname === "/";
+  const isStudentSpace = pathname.startsWith("/eleve");
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [role, setRole] = useState<UserRole>(null);
@@ -66,14 +70,22 @@ export default function AppNavigation() {
             <>
               <Link
                 href="/"
-                className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-sky-400"
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                  isTeacherSpace
+                    ? "bg-sky-500 text-white hover:bg-sky-400"
+                    : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
+                }`}
               >
                 Espace professeur
               </Link>
 
               <Link
                 href="/eleve"
-                className="rounded-xl border border-sky-400 px-4 py-2 text-sm font-medium text-sky-300 transition hover:bg-sky-950"
+                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                  isStudentSpace
+                    ? "bg-sky-500 text-white hover:bg-sky-400"
+                    : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
+                }`}
               >
                 Prévisualiser espace élève
               </Link>
