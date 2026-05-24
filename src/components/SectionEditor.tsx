@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
 type SaveState = "idle" | "dirty" | "saving" | "saved" | "error";
@@ -117,6 +118,7 @@ export default function SectionEditor({
   section,
   isReadOnly = false,
 }: SectionEditorProps) {
+  const router = useRouter();
   const [content, setContent] = useState(section.content ?? "");
   const [status, setStatus] = useState(section.completion_status);
   const [characterCount, setCharacterCount] = useState(
@@ -160,6 +162,7 @@ export default function SectionEditor({
       setCharacterCount(updated.character_count);
       initialContentRef.current = nextContent;
       setSaveState("saved");
+      router.refresh();
     }
   }
 
