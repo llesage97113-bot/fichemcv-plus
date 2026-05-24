@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import SectionEditor from "@/components/SectionEditor";
 import TeacherWorkflowActions from "@/components/TeacherWorkflowActions";
 import AppNavigation from "@/components/AppNavigation";
+import { requireRole } from "@/lib/auth/requireUser";
 
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
@@ -42,6 +43,8 @@ export default async function FicheDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  await requireRole("professeur");
+
   const { id } = await params;
 
   const { data: fiche, error: ficheError } = await supabase

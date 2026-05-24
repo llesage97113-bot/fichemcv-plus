@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabase/server";
 import SectionEditor from "@/components/SectionEditor";
 import SubmitFicheButton from "@/components/SubmitFicheButton";
 import AppNavigation from "@/components/AppNavigation";
+import { requireAnyRole } from "@/lib/auth/requireUser";
 
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
@@ -106,15 +107,45 @@ export default async function StudentFicheDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
+  const authUser = await requireAnyRole(["professeur", "eleve"]);
+  const supabase = await createClient();
+  const authRole = authUser.app_metadata?.role;
+  const isTeacherPreview = authRole === "professeur";
+
   const { id } = await params;
 
-  const { data: fiche, error: ficheError } = await supabase
+  let ficheQuery = supabase
     .from("teacher_fiche_dashboard")
     .select("*")
-    .eq("fiche_id", id)
-    .eq("first_name", "Emma")
-    .eq("last_name", "MARTIN")
-    .single();
+    .eq("fiche_id", id);
+
+  if (!isTeacherPreview) {
+    const { data: appUser, error: appUserError } = await supabase
+      .from("app_users")
+      .select("id, email, role, is_active")
+      .eq("email", authUser.email ?? "")
+      .eq("role", "student")
+      .eq("is_active", true)
+      .single();
+
+    if (appUserError || !appUser) {
+      notFound();
+    }
+
+    const { data: connectedStudent, error: connectedStudentError } = await supabase
+      .from("students")
+      .select("id")
+      .eq("user_id", appUser.id)
+      .single();
+
+    if (connectedStudentError || !connectedStudent) {
+      notFound();
+    }
+
+    ficheQuery = ficheQuery.eq("student_id", connectedStudent.id);
+  }
+
+  const { data: fiche, error: ficheError } = await ficheQuery.single();
 
   if (ficheError || !fiche) {
     notFound();

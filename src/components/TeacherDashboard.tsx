@@ -16,10 +16,39 @@ type FicheDashboardItem = {
   quality_status: string | null;
   active_comments_count: number | null;
 };
-
 type TeacherDashboardProps = {
   fiches: FicheDashboardItem[];
 };
+
+function getPriorityActionLabel(statut: string) {
+  switch (statut) {
+    case "soumise":
+      return "Action attendue : ouvrir la fiche pour demander une correction.";
+    case "corrigee":
+      return "Action attendue : ouvrir la fiche pour valider la fiche.";
+    case "validee":
+      return "Action attendue : ouvrir la fiche pour verrouiller la fiche.";
+    case "verrouillee":
+      return "Action attendue : ouvrir la fiche pour archiver la fiche.";
+    default:
+      return "Action attendue : consulter la fiche.";
+  }
+}
+
+function getPriorityLabel(statut: string) {
+  switch (statut) {
+    case "soumise":
+      return "À corriger";
+    case "corrigee":
+      return "À valider";
+    case "validee":
+      return "À verrouiller";
+    case "verrouillee":
+      return "À archiver";
+    default:
+      return statut;
+  }
+}
 
 function getProgressClasses(score: number) {
   if (score >= 80) {
@@ -77,7 +106,6 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       new Set(fiches.map((fiche) => fiche.status).filter(Boolean))
     ).sort();
   }, [fiches]);
-
   const filteredFiches = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
@@ -131,6 +159,11 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
             fiche.status === "archivee"
         ).length,
     };
+  }, [fiches]);
+  const priorityFiches = useMemo(() => {
+    return fiches.filter((fiche) =>
+      ["soumise", "corrigee", "validee", "verrouillee"].includes(fiche.status ?? "")
+    );
   }, [fiches]);
 
   function resetFilters() {
@@ -188,6 +221,78 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           </p>
         </div>
       </section>
+
+              <section className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm">
+        <div className="mb-3">
+          <h2 className="text-lg font-semibold text-slate-100">
+            Cycle de traitement des fiches
+          </h2>
+          <p className="text-sm text-slate-400">
+            Suivi du parcours complet d’une fiche, de sa rédaction jusqu’à son archivage.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap gap-2 text-xs font-medium">
+          <span className="rounded-full border border-slate-700 px-3 py-1 text-slate-300">Brouillon</span>
+          <span className="text-slate-500">→</span>
+          <span className="rounded-full border border-sky-500/40 px-3 py-1 text-sky-300">Soumise</span>
+          <span className="text-slate-500">→</span>
+          <span className="rounded-full border border-amber-500/40 px-3 py-1 text-amber-300">À corriger</span>
+          <span className="text-slate-500">→</span>
+          <span className="rounded-full border border-indigo-500/40 px-3 py-1 text-indigo-300">Corrigée</span>
+          <span className="text-slate-500">→</span>
+          <span className="rounded-full border border-emerald-500/40 px-3 py-1 text-emerald-300">Validée</span>
+          <span className="text-slate-500">→</span>
+          <span className="rounded-full border border-purple-500/40 px-3 py-1 text-purple-300">Verrouillée</span>
+          <span className="text-slate-500">→</span>
+          <span className="rounded-full border border-slate-500 px-3 py-1 text-slate-300">Archivée</span>
+        </div>
+
+        <p className="mt-3 text-sm text-slate-400">
+          Une fiche archivée reste complète, consultable en lecture seule et ne doit jamais apparaître vierge.
+        </p>
+      </section>
+
+{priorityFiches.length > 0 && (
+          <section className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
+            <div className="mb-4">
+              <h2 className="text-xl font-semibold text-amber-200">
+                À traiter en priorité — {priorityFiches.length} fiche(s)
+              </h2>
+              <p className="text-sm text-amber-100/80">
+                Ces fiches demandent une action professeur dans le workflow.
+              </p>
+            </div>
+
+            <div className="grid gap-3">
+              {priorityFiches.map((fiche) => (
+                <Link
+                  key={fiche.fiche_id}
+                  href={`/fiches/${fiche.fiche_id}`}
+                  className="rounded-xl border border-amber-400/20 bg-slate-950/60 p-4 transition hover:border-amber-300/60 hover:bg-slate-900"
+                >
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="font-medium text-slate-100">
+                        {fiche.first_name} {fiche.last_name}
+                      </p>
+                      <p className="text-sm text-slate-400">
+                        Complétude : {fiche.completion_score ?? 0} %
+                      </p>
+                      <p className="mt-1 text-sm text-amber-100/80">
+                        {getPriorityActionLabel(fiche.status ?? "")}
+                      </p>
+                    </div>
+
+                    <span className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
+                      {getPriorityLabel(fiche.status ?? "")}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
       <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
@@ -459,3 +564,4 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     </>
   );
 }
+

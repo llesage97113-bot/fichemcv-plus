@@ -1,5 +1,7 @@
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabase/server";
+import AppNavigation from "@/components/AppNavigation";
+import { requireAnyRole } from "@/lib/auth/requireUser";
 
 function getProgressClasses(score: number) {
   if (score >= 80) {
@@ -99,16 +101,73 @@ function getStatusHelp(status: string | null) {
 }
 
 export default async function StudentDashboardPage() {
-  const { data, error } = await supabase
-    .from("teacher_fiche_dashboard")
-    .select("*")
-    .eq("first_name", "Emma")
-    .eq("last_name", "MARTIN")
-    .order("epreuve", { ascending: true })
-    .order("numero_fiche", { ascending: true });
+  const authUser = await requireAnyRole(["professeur", "eleve"]);
+  const supabase = await createClient();
+  const authRole = authUser.app_metadata?.role;
+  const isTeacherPreview =
+    authRole === "professeur" ||
+    authRole === "teacher" ||
+    authUser.email === "professeur@test.fr";
+
+  let student = null;
+  let studentErrorMessage = "";
+
+  if (isTeacherPreview) {
+    const { data: previewStudent, error: previewStudentError } = await supabase
+      .from("students")
+      .select("id, first_name, last_name, candidate_number, student_code")
+      .order("last_name", { ascending: true })
+      .order("first_name", { ascending: true })
+      .limit(1)
+      .single();
+
+    student = previewStudent;
+
+    if (previewStudentError || !previewStudent) {
+      studentErrorMessage = "Aucun élève de prévisualisation n’a été trouvé.";
+    }
+  } else {
+    const { data: appUser, error: appUserError } = await supabase
+      .from("app_users")
+      .select("id, email, role, is_active")
+      .eq("email", authUser.email ?? "")
+      .eq("role", "student")
+      .eq("is_active", true)
+      .single();
+
+    if (appUserError || !appUser) {
+      studentErrorMessage = "Aucun profil élève actif n’est associé à ce compte.";
+    } else {
+      const { data: connectedStudent, error: connectedStudentError } = await supabase
+        .from("students")
+        .select("id, first_name, last_name, candidate_number, student_code")
+        .eq("user_id", appUser.id)
+        .single();
+
+      student = connectedStudent;
+
+      if (connectedStudentError || !connectedStudent) {
+        studentErrorMessage = "Aucune fiche élève n’est rattachée à ce compte.";
+      }
+    }
+  }
+
+  const { data, error } = student
+    ? await supabase
+        .from("teacher_fiche_dashboard")
+        .select("*")
+        .eq("student_id", student.id)
+        .order("epreuve", { ascending: true })
+        .order("numero_fiche", { ascending: true })
+    : { data: null, error: null };
+
+  const studentFullName = student
+    ? `${student.first_name} ${student.last_name}`
+    : "Élève non rattaché";
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
+      <AppNavigation />
       <section className="mx-auto max-w-5xl">
         <header className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm sm:p-6">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -118,16 +177,27 @@ export default async function StudentDashboardPage() {
               </p>
 
               <h1 className="text-3xl font-bold sm:text-4xl">
-                Bonjour Emma MARTIN
+                Bonjour {studentFullName}
               </h1>
             </div>
 
-            <Link
-              href="/"
-              className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-            >
-              Accès professeur prototype
-            </Link>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/eleve/profil"
+                className="inline-flex items-center justify-center rounded-lg border border-sky-500/40 px-3 py-2 text-sm text-sky-300 hover:bg-sky-950/40 hover:text-sky-200"
+              >
+                Voir mon profil
+              </Link>
+
+              {isTeacherPreview && (
+                <Link
+                  href="/"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                >
+                  Retour espace professeur
+                </Link>
+              )}
+            </div>
           </div>
 
           <p className="text-sm leading-6 text-slate-400 sm:text-base">
@@ -136,6 +206,63 @@ export default async function StudentDashboardPage() {
             en lecture seule.
           </p>
         </header>
+
+        {student && (
+          <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm">
+            <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-wide text-sky-300">
+                  Profil élève
+                </p>
+                <h2 className="mt-1 text-2xl font-semibold text-slate-100">
+                  {studentFullName}
+                </h2>
+              </div>
+
+              <span className="rounded-full border border-sky-500/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
+                {isTeacherPreview ? "Prévisualisation professeur" : "Élève connecté"}
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Prénom
+                </p>
+                <p className="mt-1 font-medium text-slate-100">
+                  {student.first_name}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Nom
+                </p>
+                <p className="mt-1 font-medium text-slate-100">
+                  {student.last_name}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Numéro candidat
+                </p>
+                <p className="mt-1 font-medium text-slate-100">
+                  {student.candidate_number || "Non renseigné"}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 sm:col-span-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Code élève
+                </p>
+                <p className="mt-1 font-mono text-sm text-slate-100">
+                  {student.student_code || "Non renseigné"}
+                </p>
+              </div>
+            </div>
+          </section>
+        )}
 
         {error && (
           <div className="mb-6 rounded-lg border border-red-500 bg-red-950/40 p-4">
@@ -148,7 +275,7 @@ export default async function StudentDashboardPage() {
           <div className="rounded-lg border border-yellow-500 bg-yellow-950/40 p-4">
             <p className="font-semibold text-yellow-300">Aucune fiche trouvée</p>
             <p className="text-yellow-200">
-              Aucune fiche n’est associée à Emma MARTIN pour le moment.
+              {studentErrorMessage || `Aucune fiche n’est associée à ${studentFullName} pour le moment.`}
             </p>
           </div>
         )}

@@ -2,8 +2,11 @@ import Link from "next/link";
 import TeacherDashboard from "@/components/TeacherDashboard";
 import { supabase } from "@/lib/supabaseClient";
 import AppNavigation from "@/components/AppNavigation";
+import { requireRole } from "@/lib/auth/requireUser";
 
 export default async function Home() {
+  await requireRole("professeur");
+
   const { data, error } = await supabase
     .from("teacher_fiche_dashboard")
     .select("*")
