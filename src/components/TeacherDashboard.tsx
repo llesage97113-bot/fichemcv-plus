@@ -166,6 +166,35 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     );
   }, [fiches]);
 
+  const priorityGroups = useMemo(() => {
+    return [
+      {
+        status: "soumise",
+        title: "À corriger",
+        description: "Fiches soumises par les élèves, en attente d’une première lecture professeur.",
+        items: priorityFiches.filter((fiche) => fiche.status === "soumise"),
+      },
+      {
+        status: "corrigee",
+        title: "À valider",
+        description: "Fiches corrigées par les élèves, en attente de validation.",
+        items: priorityFiches.filter((fiche) => fiche.status === "corrigee"),
+      },
+      {
+        status: "validee",
+        title: "À verrouiller",
+        description: "Fiches validées, prêtes à être verrouillées.",
+        items: priorityFiches.filter((fiche) => fiche.status === "validee"),
+      },
+      {
+        status: "verrouillee",
+        title: "À archiver",
+        description: "Fiches verrouillées, prêtes pour l’archivage final.",
+        items: priorityFiches.filter((fiche) => fiche.status === "verrouillee"),
+      },
+    ];
+  }, [priorityFiches]);
+
   function resetFilters() {
     setSearch("");
     setClassFilter("all");
@@ -253,46 +282,105 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         </p>
       </section>
 
-{priorityFiches.length > 0 && (
-          <section className="mb-8 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5">
-            <div className="mb-4">
-              <h2 className="text-xl font-semibold text-amber-200">
-                À traiter en priorité — {priorityFiches.length} fiche(s)
-              </h2>
-              <p className="text-sm text-amber-100/80">
-                Ces fiches demandent une action professeur dans le workflow.
-              </p>
-            </div>
+<section
+        className={`mb-8 rounded-2xl border p-5 ${
+          priorityFiches.length > 0
+            ? "border-amber-500/30 bg-amber-500/10"
+            : "border-emerald-500/30 bg-emerald-500/10"
+        }`}
+      >
+        <div className="mb-5">
+          <h2
+            className={`text-xl font-semibold ${
+              priorityFiches.length > 0 ? "text-amber-200" : "text-emerald-200"
+            }`}
+          >
+            Actions professeur — {priorityFiches.length} fiche(s) à traiter
+          </h2>
+          <p
+            className={`text-sm ${
+              priorityFiches.length > 0
+                ? "text-amber-100/80"
+                : "text-emerald-100/80"
+            }`}
+          >
+            {priorityFiches.length > 0
+              ? "Les fiches sont regroupées selon l’action attendue dans le workflow."
+              : "Aucune action urgente actuellement : toutes les fiches sont à jour dans le workflow."}
+          </p>
+        </div>
 
-            <div className="grid gap-3">
-              {priorityFiches.map((fiche) => (
-                <Link
-                  key={fiche.fiche_id}
-                  href={`/fiches/${fiche.fiche_id}`}
-                  className="rounded-xl border border-amber-400/20 bg-slate-950/60 p-4 transition hover:border-amber-300/60 hover:bg-slate-900"
+        <div className="grid gap-4 lg:grid-cols-4">
+          {priorityGroups.map((group) => (
+            <div
+              key={group.status}
+              className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+            >
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-slate-100">
+                    {group.title}
+                  </h3>
+                  <p className="mt-1 text-xs leading-5 text-slate-400">
+                    {group.description}
+                  </p>
+                </div>
+
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-bold ${
+                    group.items.length > 0
+                      ? "bg-amber-400/15 text-amber-200"
+                      : "bg-slate-800 text-slate-400"
+                  }`}
                 >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div>
-                      <p className="font-medium text-slate-100">
-                        {fiche.first_name} {fiche.last_name}
-                      </p>
+                  {group.items.length}
+                </span>
+              </div>
+
+              {group.items.length === 0 && (
+                <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-500">
+                  Aucune fiche.
+                </p>
+              )}
+
+              {group.items.length > 0 && (
+                <div className="space-y-3">
+                  {group.items.map((fiche) => (
+                    <Link
+                      key={fiche.fiche_id}
+                      href={`/fiches/${fiche.fiche_id}`}
+                      className="block rounded-xl border border-slate-800 bg-slate-900/80 p-3 transition hover:border-amber-300/60 hover:bg-slate-900"
+                    >
+                      <div className="mb-2 flex items-start justify-between gap-2">
+                        <div>
+                          <p className="font-medium text-slate-100">
+                            {fiche.first_name} {fiche.last_name}
+                          </p>
+                          <p className="text-xs text-slate-500">
+                            {fiche.epreuve} · Fiche n°{fiche.numero_fiche}
+                          </p>
+                        </div>
+
+                        <span className="rounded-full bg-amber-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+                          {getPriorityLabel(fiche.status ?? "")}
+                        </span>
+                      </div>
+
                       <p className="text-sm text-slate-400">
                         Complétude : {fiche.completion_score ?? 0} %
                       </p>
-                      <p className="mt-1 text-sm text-amber-100/80">
+
+                      <p className="mt-1 text-xs leading-5 text-amber-100/80">
                         {getPriorityActionLabel(fiche.status ?? "")}
                       </p>
-                    </div>
-
-                    <span className="rounded-full bg-amber-400/15 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-amber-200">
-                      {getPriorityLabel(fiche.status ?? "")}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
-          </section>
-        )}
+          ))}
+        </div>
+      </section>
 
       <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm">
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
