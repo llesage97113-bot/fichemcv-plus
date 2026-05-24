@@ -15,6 +15,8 @@ export default async function StudentProfilePage() {
 
   let student = null;
   let studentErrorMessage = "";
+  let className = "";
+  let schoolYear = "";
 
   if (isTeacherPreview) {
     const { data: previewStudent, error: previewStudentError } = await supabase
@@ -60,6 +62,18 @@ export default async function StudentProfilePage() {
   const studentFullName = student
     ? `${student.first_name} ${student.last_name}`
     : "Élève non rattaché";
+
+  if (student) {
+    const { data: studentDashboardItem } = await supabase
+      .from("teacher_fiche_dashboard")
+      .select("class_name, school_year")
+      .eq("student_id", student.id)
+      .limit(1)
+      .maybeSingle();
+
+    className = studentDashboardItem?.class_name ?? "";
+    schoolYear = studentDashboardItem?.school_year ?? "";
+  }
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
@@ -125,6 +139,24 @@ export default async function StudentProfilePage() {
                 </p>
                 <p className="mt-1 text-lg font-medium text-slate-100">
                   {student.last_name}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Classe
+                </p>
+                <p className="mt-1 text-lg font-medium text-slate-100">
+                  {className || "Non renseignée"}
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Année scolaire
+                </p>
+                <p className="mt-1 text-lg font-medium text-slate-100">
+                  {schoolYear || "Non renseignée"}
                 </p>
               </div>
 
