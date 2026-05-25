@@ -321,6 +321,21 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     setCompletionFilter("all");
   }
 
+  function focusStudentFiches(firstName: string, lastName: string, className: string) {
+    setSearch(`${firstName} ${lastName}`.trim());
+    setClassFilter(className === "Classe non renseignée" ? "all" : className);
+    setEpreuveFilter("all");
+    setNumeroFicheFilter("all");
+    setStatusFilter("all");
+    setCompletionFilter("all");
+
+    window.setTimeout(() => {
+      document
+        .getElementById("teacher-fiche-list")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 0);
+  }
+
   return (
     <>
       <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
@@ -562,18 +577,41 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                   </div>
                 </div>
 
-                {summary.fragileCount > 0 && (
-                  <p className="mt-3 text-xs text-amber-200">
-                    ⚠️ {summary.fragileCount} fiche(s) fragile(s) à surveiller.
-                  </p>
-                )}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  {summary.fragileCount > 0 ? (
+                    <p className="text-xs text-amber-200">
+                      ⚠️ {summary.fragileCount} fiche(s) fragile(s) à surveiller.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Aucun signal fragile sur les fiches affichées.
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      focusStudentFiches(
+                        summary.firstName,
+                        summary.lastName,
+                        summary.className
+                      )
+                    }
+                    className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-medium text-sky-200 transition hover:bg-sky-950/40"
+                  >
+                    Voir ses fiches
+                  </button>
+                </div>
               </article>
             ))}
           </div>
         )}
       </section>
 
-      <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm">
+      <section
+        id="teacher-fiche-list"
+        className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm"
+      >
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">
