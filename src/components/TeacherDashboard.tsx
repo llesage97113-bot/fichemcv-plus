@@ -230,6 +230,88 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     ];
   }, [priorityFiches]);
 
+  const studentSummaries = useMemo(() => {
+    const summaries = new Map<
+      string,
+      {
+        key: string;
+        firstName: string;
+        lastName: string;
+        className: string;
+        totalFiches: number;
+        e31Created: number;
+        e31Engaged: number;
+        e32Created: number;
+        e32Engaged: number;
+        fragileCount: number;
+        professorActions: number;
+      }
+    >();
+
+    for (const fiche of filteredFiches) {
+      const key = `${fiche.class_name ?? "sans-classe"}-${fiche.last_name ?? ""}-${fiche.first_name ?? ""}`;
+
+      if (!summaries.has(key)) {
+        summaries.set(key, {
+          key,
+          firstName: fiche.first_name ?? "",
+          lastName: fiche.last_name ?? "",
+          className: fiche.class_name ?? "Classe non renseignée",
+          totalFiches: 0,
+          e31Created: 0,
+          e31Engaged: 0,
+          e32Created: 0,
+          e32Engaged: 0,
+          fragileCount: 0,
+          professorActions: 0,
+        });
+      }
+
+      const summary = summaries.get(key);
+      if (!summary) {
+        continue;
+      }
+
+      const score = Number(fiche.completion_score ?? 0);
+      const isEngaged =
+        score > 0 ||
+        !["non_commencee", "brouillon"].includes(fiche.status ?? "");
+
+      summary.totalFiches += 1;
+
+      if (fiche.epreuve === "E31") {
+        summary.e31Created += 1;
+        if (isEngaged) {
+          summary.e31Engaged += 1;
+        }
+      }
+
+      if (fiche.epreuve === "E32") {
+        summary.e32Created += 1;
+        if (isEngaged) {
+          summary.e32Engaged += 1;
+        }
+      }
+
+      if (getCompletionBucket(score) === "fragile") {
+        summary.fragileCount += 1;
+      }
+
+      if (["soumise", "corrigee", "validee", "verrouillee"].includes(fiche.status ?? "")) {
+        summary.professorActions += 1;
+      }
+    }
+
+    return Array.from(summaries.values()).sort((a, b) => {
+      const lastNameCompare = a.lastName.localeCompare(b.lastName);
+      if (lastNameCompare !== 0) {
+        return lastNameCompare;
+      }
+
+      return a.firstName.localeCompare(b.firstName);
+    });
+  }, [filteredFiches]);
+
   function resetFilters() {
     setSearch("");
     setClassFilter("all");
@@ -405,6 +487,87 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                   </div>
                 )}
               </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-100">
+            Synthèse par élève
+          </h2>
+          <p className="text-sm text-slate-400">
+            Vue rapide de l’avancement des fiches par élève, selon les filtres actifs.
+          </p>
+        </div>
+
+        {studentSummaries.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+            <p className="text-sm text-slate-400">
+              Aucun élève ne correspond aux filtres actifs.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {studentSummaries.map((summary) => (
+              <article
+                key={summary.key}
+                className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+              >
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-base font-semibold text-slate-100">
+                      {summary.firstName} {summary.lastName}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {summary.className} · {summary.totalFiches} fiche(s) affichée(s)
+                    </p>
+                  </div>
+
+                  {summary.professorActions > 0 ? (
+                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+                      {summary.professorActions} action(s) prof
+                    </span>
+                  ) : (
+                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+                      À jour
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      E31
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-100">
+                      {summary.e31Engaged}/3 engagée(s)
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {summary.e31Created}/3 créée(s)
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      E32
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-100">
+                      {summary.e32Engaged}/4 engagée(s)
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {summary.e32Created}/4 créée(s)
+                    </p>
+                  </div>
+                </div>
+
+                {summary.fragileCount > 0 && (
+                  <p className="mt-3 text-xs text-amber-200">
+                    ⚠️ {summary.fragileCount} fiche(s) fragile(s) à surveiller.
+                  </p>
+                )}
+              </article>
             ))}
           </div>
         )}
