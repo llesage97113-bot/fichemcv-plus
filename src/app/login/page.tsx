@@ -18,7 +18,7 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrorMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -26,11 +26,18 @@ export default function LoginPage() {
     setIsLoading(false);
 
     if (error) {
-      setErrorMessage("Connexion impossible. Vérifie l’adresse email et le mot de passe.");
+      setErrorMessage(`Connexion impossible : ${error.message}`);
       return;
     }
 
-    router.push("/");
+    const role = data.user?.app_metadata?.role;
+
+    if (role === "eleve") {
+      router.push("/eleve");
+    } else {
+      router.push("/");
+    }
+
     router.refresh();
   }
 

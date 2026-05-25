@@ -100,31 +100,54 @@ function getStatusHelp(status: string | null) {
   }
 }
 
-export default async function StudentDashboardPage() {
+export default async function StudentDashboardPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ studentId?: string }>;
+}) {
+  const resolvedSearchParams = await searchParams;
+  const selectedStudentId = resolvedSearchParams?.studentId ?? "";
+
   const authUser = await requireAnyRole(["professeur", "eleve"]);
   const supabase = await createClient();
   const authRole = authUser.app_metadata?.role;
-  const isTeacherPreview =
-    authRole === "professeur" ||
-    authRole === "teacher" ||
-    authUser.email === "professeur@test.fr";
+  const isTeacherPreview = authRole === "professeur";
 
   let student = null;
   let studentErrorMessage = "";
+  let previewStudents: {
+    id: string;
+    first_name: string | null;
+    last_name: string | null;
+    candidate_number: string | null;
+    student_code: string | null;
+    registration_status?: string | null;
+  }[] = [];
 
   if (isTeacherPreview) {
-    const { data: previewStudent, error: previewStudentError } = await supabase
+    const { data: previewStudentList, error: previewStudentsError } = await supabase
       .from("students")
-      .select("id, first_name, last_name, candidate_number, student_code")
+      .select("id, first_name, last_name, candidate_number, student_code, registration_status")
       .order("last_name", { ascending: true })
-      .order("first_name", { ascending: true })
-      .limit(1)
-      .single();
+      .order("first_name", { ascending: true });
 
-    student = previewStudent;
+    previewStudents = previewStudentList ?? [];
 
-    if (previewStudentError || !previewStudent) {
+    if (previewStudentsError || previewStudents.length === 0) {
       studentErrorMessage = "Aucun élève de prévisualisation n’a été trouvé.";
+    } else {
+      const validatedPreviewStudents = previewStudents.filter(
+        (previewStudent) =>
+          previewStudent.registration_status === "validated" ||
+          !previewStudent.registration_status
+      );
+
+      student =
+        validatedPreviewStudents.find(
+          (previewStudent) => previewStudent.id === selectedStudentId
+        ) ??
+        validatedPreviewStudents[0] ??
+        previewStudents[0];
     }
   } else {
     const { data: appUser, error: appUserError } = await supabase
@@ -167,7 +190,7 @@ export default async function StudentDashboardPage() {
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
-      <AppNavigation />
+      <AppNavigation maxWidth="5xl" />
       <section className="mx-auto max-w-5xl">
         <header className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm sm:p-6">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
@@ -206,6 +229,114 @@ export default async function StudentDashboardPage() {
             en lecture seule.
           </p>
         </header>
+          {isTeacherPreview && previewStudents.length > 0 && (
+            <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
+              <div className="mb-5">
+                <h2 className="text-lg font-semibold text-slate-100">
+                  Prévisualisation professeur
+                </h2>
+                <p className="text-sm text-slate-400">
+                  Choisis un élève validé pour afficher son espace. Les inscriptions en attente restent visibles, mais ne sont pas encore prévisualisables.
+                </p>
+              </div>
+
+              <div className="space-y-5">
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-emerald-200">
+                      Élèves validés
+                    </h3>
+                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+                      {
+                        previewStudents.filter(
+                          (previewStudent) =>
+                            previewStudent.registration_status === "validated" ||
+                            !previewStudent.registration_status
+                        ).length
+                      }
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {previewStudents
+                      .filter(
+                        (previewStudent) =>
+                          previewStudent.registration_status === "validated" ||
+                          !previewStudent.registration_status
+                      )
+                      .map((previewStudent) => {
+                        const isSelected = previewStudent.id === student?.id;
+
+                        return (
+                          <Link
+                            key={previewStudent.id}
+                            href={`/eleve?studentId=${previewStudent.id}`}
+                            className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
+                              isSelected
+                                ? "border-sky-400 bg-sky-500/20 text-sky-100"
+                                : "border-slate-700 bg-slate-950/60 text-slate-300 hover:border-sky-500/50 hover:text-sky-200"
+                            }`}
+                          >
+                            {previewStudent.first_name} {previewStudent.last_name}
+                          </Link>
+                        );
+                      })}
+
+                    {previewStudents.filter(
+                      (previewStudent) =>
+                        previewStudent.registration_status === "validated" ||
+                        !previewStudent.registration_status
+                    ).length === 0 && (
+                      <p className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm text-slate-500">
+                        Aucun élève validé pour le moment.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-amber-200">
+                      Inscriptions en attente
+                    </h3>
+                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+                      {
+                        previewStudents.filter(
+                          (previewStudent) =>
+                            previewStudent.registration_status === "pending"
+                        ).length
+                      }
+                    </span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {previewStudents
+                      .filter(
+                        (previewStudent) =>
+                          previewStudent.registration_status === "pending"
+                      )
+                      .map((previewStudent) => (
+                        <span
+                          key={previewStudent.id}
+                          className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200/80"
+                        >
+                          {previewStudent.first_name} {previewStudent.last_name} · en attente
+                        </span>
+                      ))}
+
+                    {previewStudents.filter(
+                      (previewStudent) =>
+                        previewStudent.registration_status === "pending"
+                    ).length === 0 && (
+                      <p className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm text-slate-500">
+                        Aucune inscription en attente.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
 
         {student && (
           <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm">

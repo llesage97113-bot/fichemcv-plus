@@ -74,7 +74,7 @@ export default async function FicheDetailPage({
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
-        <AppNavigation />
+        <AppNavigation maxWidth="5xl" />
       <section className="mx-auto max-w-5xl">
         <Link
           href="/"

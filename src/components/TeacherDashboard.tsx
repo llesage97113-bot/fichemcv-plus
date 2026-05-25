@@ -92,6 +92,8 @@ function getCompletionBucket(score: number) {
 export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
+  const [epreuveFilter, setEpreuveFilter] = useState("all");
+  const [numeroFicheFilter, setNumeroFicheFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [completionFilter, setCompletionFilter] = useState("all");
 
@@ -105,6 +107,22 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     return Array.from(
       new Set(fiches.map((fiche) => fiche.status).filter(Boolean))
     ).sort();
+  }, [fiches]);
+
+  const epreuves = useMemo(() => {
+    return Array.from(
+      new Set(fiches.map((fiche) => fiche.epreuve).filter(Boolean))
+    ).sort();
+  }, [fiches]);
+
+  const ficheNumbers = useMemo(() => {
+    return Array.from(
+      new Set(
+        fiches
+          .map((fiche) => fiche.numero_fiche)
+          .filter((numero): numero is number => typeof numero === "number")
+      )
+    ).sort((a, b) => a - b);
   }, [fiches]);
   const filteredFiches = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
@@ -126,6 +144,13 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       const matchesClass =
         classFilter === "all" || fiche.class_name === classFilter;
 
+      const matchesEpreuve =
+        epreuveFilter === "all" || fiche.epreuve === epreuveFilter;
+
+      const matchesNumeroFiche =
+        numeroFicheFilter === "all" ||
+        String(fiche.numero_fiche) === numeroFicheFilter;
+
       const matchesStatus =
         statusFilter === "all" || fiche.status === statusFilter;
 
@@ -136,11 +161,21 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       return (
         matchesSearch &&
         matchesClass &&
+        matchesEpreuve &&
+        matchesNumeroFiche &&
         matchesStatus &&
         matchesCompletion
       );
     });
-  }, [fiches, search, classFilter, statusFilter, completionFilter]);
+  }, [
+    fiches,
+    search,
+    classFilter,
+    epreuveFilter,
+    numeroFicheFilter,
+    statusFilter,
+    completionFilter,
+  ]);
 
   const dashboardStats = useMemo(() => {
     return {
@@ -198,6 +233,8 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   function resetFilters() {
     setSearch("");
     setClassFilter("all");
+    setEpreuveFilter("all");
+    setNumeroFicheFilter("all");
     setStatusFilter("all");
     setCompletionFilter("all");
   }
@@ -393,7 +430,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           </button>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <label className="block">
             <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
               Rechercher
@@ -420,6 +457,42 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
               {classes.map((className) => (
                 <option key={className} value={className ?? ""}>
                   {className}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Épreuve
+            </span>
+            <select
+              value={epreuveFilter}
+              onChange={(event) => setEpreuveFilter(event.target.value)}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
+            >
+              <option value="all">Toutes les épreuves</option>
+              {epreuves.map((epreuve) => (
+                <option key={epreuve} value={epreuve ?? ""}>
+                  {epreuve}
+                </option>
+              ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
+              Numéro
+            </span>
+            <select
+              value={numeroFicheFilter}
+              onChange={(event) => setNumeroFicheFilter(event.target.value)}
+              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
+            >
+              <option value="all">Toutes les fiches</option>
+              {ficheNumbers.map((numero) => (
+                <option key={numero} value={String(numero)}>
+                  Fiche n°{numero}
                 </option>
               ))}
             </select>

@@ -8,10 +8,7 @@ export default async function StudentProfilePage() {
   const supabase = await createClient();
 
   const authRole = authUser.app_metadata?.role;
-  const isTeacherPreview =
-    authRole === "professeur" ||
-    authRole === "teacher" ||
-    authUser.email === "professeur@test.fr";
+  const isTeacherPreview = authRole === "professeur";
 
   let student = null;
   let studentErrorMessage = "";
@@ -77,7 +74,7 @@ export default async function StudentProfilePage() {
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
-      <AppNavigation />
+      <AppNavigation maxWidth="4xl" />
 
       <section className="mx-auto max-w-4xl">
         <Link

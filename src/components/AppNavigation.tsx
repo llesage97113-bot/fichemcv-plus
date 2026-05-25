@@ -7,7 +7,17 @@ import { createClient } from "@/lib/supabase/client";
 
 type UserRole = "professeur" | "eleve" | null;
 
-export default function AppNavigation() {
+type AppNavigationProps = {
+  maxWidth?: "4xl" | "5xl" | "6xl";
+};
+
+const maxWidthClasses = {
+  "4xl": "max-w-4xl",
+  "5xl": "max-w-5xl",
+  "6xl": "max-w-6xl",
+};
+
+export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
@@ -54,7 +64,9 @@ export default function AppNavigation() {
   }
 
   return (
-    <nav className="mb-6 rounded-2xl border border-slate-700 bg-slate-900/80 px-5 py-4 shadow-sm">
+    <nav
+      className={`mx-auto mb-6 w-full ${maxWidthClasses[maxWidth]} rounded-2xl border border-slate-700 bg-slate-900/80 px-5 py-4 shadow-sm`}
+    >
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div>
           <p className="text-sm uppercase tracking-wide text-sky-400">
