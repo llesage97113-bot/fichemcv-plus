@@ -96,6 +96,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [numeroFicheFilter, setNumeroFicheFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [completionFilter, setCompletionFilter] = useState("all");
+  const [isFicheDetailsOpen, setIsFicheDetailsOpen] = useState(false);
 
   const classes = useMemo(() => {
     return Array.from(
@@ -328,6 +329,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     setNumeroFicheFilter("all");
     setStatusFilter("all");
     setCompletionFilter("all");
+    setIsFicheDetailsOpen(true);
 
     window.setTimeout(() => {
       document
@@ -338,36 +340,38 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
 
   return (
     <>
-      <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-slate-100">
-            Vue d’ensemble
-          </h2>
-          <p className="text-sm text-slate-400">
-            Synthèse rapide de l’état des fiches suivies.
-          </p>
-        </div>
+      <section className="mb-4 rounded-2xl border border-sky-500/30 bg-slate-900/60 px-5 py-3 shadow-sm">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-300">
+              Pilotage rapide
+            </h2>
+            <p className="mt-1 text-xs text-slate-400">
+              {filteredFiches.length} fiche(s) affichée(s) sur {fiches.length}
+            </p>
+          </div>
 
-        <div className="flex flex-wrap gap-2 text-xs font-medium">
-          <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-slate-300">
-            Total : <span className="font-bold text-slate-100">{dashboardStats.total}</span>
-          </span>
+          <div className="flex flex-wrap gap-2 text-xs font-medium">
+            <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-slate-300">
+              Total : <span className="font-bold text-slate-100">{dashboardStats.total}</span>
+            </span>
 
-          <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-amber-200">
-            Brouillons : <span className="font-bold text-amber-200">{dashboardStats.drafts}</span>
-          </span>
+            <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-amber-200">
+              Brouillons : <span className="font-bold">{dashboardStats.drafts}</span>
+            </span>
 
-          <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
-            Soumises : <span className="font-bold text-sky-200">{dashboardStats.submitted}</span>
-          </span>
+            <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
+              Soumises : <span className="font-bold">{dashboardStats.submitted}</span>
+            </span>
 
-          <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-orange-200">
-            À corriger : <span className="font-bold text-orange-200">{dashboardStats.correction}</span>
-          </span>
+            <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-orange-200">
+              À corriger : <span className="font-bold">{dashboardStats.correction}</span>
+            </span>
 
-          <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-emerald-200">
-            Finalisées : <span className="font-bold text-emerald-200">{dashboardStats.final}</span>
-          </span>
+            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+              Finalisées : <span className="font-bold">{dashboardStats.final}</span>
+            </span>
+          </div>
         </div>
       </section>
 
@@ -551,10 +555,40 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                   )}
                 </div>
 
+                <div className="mb-3 flex flex-wrap gap-2 text-xs font-medium">
+                  <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
+                    E31 : <span className="font-bold">{summary.e31Engaged}/3</span>
+                  </span>
+
+                  <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-indigo-200">
+                    E32 : <span className="font-bold">{summary.e32Engaged}/4</span>
+                  </span>
+
+                  <span
+                    className={`rounded-full border px-3 py-1 ${
+                      summary.professorActions > 0
+                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                        : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                    }`}
+                  >
+                    Actions prof : <span className="font-bold">{summary.professorActions}</span>
+                  </span>
+
+                  <span
+                    className={`rounded-full border px-3 py-1 ${
+                      summary.fragileCount > 0
+                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                        : "border-slate-700 bg-slate-900/70 text-slate-300"
+                    }`}
+                  >
+                    Fragiles : <span className="font-bold">{summary.fragileCount}</span>
+                  </span>
+                </div>
+
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
-                      E31
+                      Détail E31
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-100">
                       {summary.e31Engaged}/3 engagée(s)
@@ -566,7 +600,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
 
                   <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
-                      E32
+                      Détail E32
                     </p>
                     <p className="mt-1 text-sm font-semibold text-slate-100">
                       {summary.e32Engaged}/4 engagée(s)
@@ -622,13 +656,23 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
-          >
-            Réinitialiser
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setIsFicheDetailsOpen((current) => !current)}
+              className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm font-medium text-sky-200 hover:bg-sky-950/40"
+            >
+              {isFicheDetailsOpen ? "Masquer le détail" : "Afficher le détail"}
+            </button>
+
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
+            >
+              Réinitialiser
+            </button>
+          </div>
         </div>
 
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
@@ -734,9 +778,18 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
             </select>
           </label>
         </div>
+
+        {!isFicheDetailsOpen && (
+          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+            <p className="text-sm text-slate-400">
+              Le détail fiche par fiche est masqué pour alléger le tableau de bord.
+              Utilise “Afficher le détail” ou “Voir ses fiches” depuis une carte élève.
+            </p>
+          </div>
+        )}
       </section>
 
-      {filteredFiches.length === 0 && (
+      {isFicheDetailsOpen && filteredFiches.length === 0 && (
         <div className="rounded-lg border border-yellow-500 bg-yellow-950/40 p-4">
           <p className="font-semibold text-yellow-300">
             Aucune fiche ne correspond aux filtres
@@ -747,7 +800,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         </div>
       )}
 
-      {filteredFiches.length > 0 && (
+      {isFicheDetailsOpen && filteredFiches.length > 0 && (
         <>
           <div className="space-y-4 md:hidden">
             {filteredFiches.map((fiche) => {
