@@ -163,7 +163,7 @@ export default async function StudentDashboardPage({
     } else {
       const { data: connectedStudent, error: connectedStudentError } = await supabase
         .from("students")
-        .select("id, first_name, last_name, candidate_number, student_code")
+        .select("id, first_name, last_name, candidate_number, student_code, registration_status")
         .eq("user_id", appUser.id)
         .single();
 
@@ -338,7 +338,20 @@ export default async function StudentDashboardPage({
             </section>
           )}
 
-        {student && (
+        {student?.registration_status === "pending" && !isTeacherPreview && (
+          <section className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 shadow-sm">
+            <p className="text-lg font-semibold text-amber-100">
+              Inscription en attente de validation
+            </p>
+            <p className="mt-2 text-sm leading-6 text-amber-100/80">
+              Ton compte a bien été créé. Ton professeur doit encore valider ton inscription
+              avant que tes fiches soient accessibles. Tu peux revenir plus tard ou demander
+              confirmation à ton professeur.
+            </p>
+          </section>
+        )}
+
+        {student?.registration_status !== "pending" && student && (
           <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>

@@ -18,7 +18,7 @@ export default async function StudentProfilePage() {
   if (isTeacherPreview) {
     const { data: previewStudent, error: previewStudentError } = await supabase
       .from("students")
-      .select("id, first_name, last_name, candidate_number, student_code")
+      .select("id, first_name, last_name, candidate_number, student_code, registration_status")
       .order("last_name", { ascending: true })
       .order("first_name", { ascending: true })
       .limit(1)
@@ -44,7 +44,7 @@ export default async function StudentProfilePage() {
       const { data: connectedStudent, error: connectedStudentError } =
         await supabase
           .from("students")
-          .select("id, first_name, last_name, candidate_number, student_code")
+          .select("id, first_name, last_name, candidate_number, student_code, registration_status")
           .eq("user_id", appUser.id)
           .single();
 
@@ -117,6 +117,22 @@ export default async function StudentProfilePage() {
 
               <span className="rounded-full border border-sky-500/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
                 {isTeacherPreview ? "Prévisualisation professeur" : "Élève connecté"}
+              </span>
+
+              <span
+                className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-wide ${
+                  student.registration_status === "pending"
+                    ? "border-amber-500/40 text-amber-300"
+                    : student.registration_status === "rejected"
+                      ? "border-red-500/40 text-red-300"
+                      : "border-emerald-500/40 text-emerald-300"
+                }`}
+              >
+                {student.registration_status === "pending"
+                  ? "Inscription en attente"
+                  : student.registration_status === "rejected"
+                    ? "Inscription refusée"
+                    : "Inscription validée"}
               </span>
             </div>
 
