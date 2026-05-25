@@ -1,5 +1,6 @@
 import TeacherDashboard from "@/components/TeacherDashboard";
 import PendingStudentRegistrations from "@/components/PendingStudentRegistrations";
+import ClassRegistrationManager from "@/components/ClassRegistrationManager";
 import { supabase } from "@/lib/supabaseClient";
 import AppNavigation from "@/components/AppNavigation";
 import { requireRole } from "@/lib/auth/requireUser";
@@ -44,6 +45,8 @@ export default async function Home() {
             </p>
           </div>
         )}
+
+        <ClassRegistrationManager />
 
         <PendingStudentRegistrations />
 

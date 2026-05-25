@@ -54,6 +54,36 @@ export default function PendingStudentRegistrations() {
     }
   }
 
+  async function handleExportCsv() {
+    try {
+      const response = await fetch("/api/admin/student-registrations/export");
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Export CSV impossible.");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "eleves-inscrits-fichemcv.csv";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue pendant l’export CSV."
+      );
+      setIsError(true);
+    }
+  }
+
   async function handleAction(studentId: string, action: "validate" | "reject") {
     const confirmed = window.confirm(
       action === "validate"
@@ -115,14 +145,24 @@ export default function PendingStudentRegistrations() {
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={loadRegistrations}
-          disabled={isLoading}
-          className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          Actualiser
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={handleExportCsv}
+            className="rounded-xl border border-sky-500/40 px-4 py-2 text-sm font-medium text-sky-200 transition hover:bg-sky-950/40"
+          >
+            Exporter les élèves CSV
+          </button>
+
+          <button
+            type="button"
+            onClick={loadRegistrations}
+            disabled={isLoading}
+            className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            Actualiser
+          </button>
+        </div>
       </div>
 
       {isLoading && (
