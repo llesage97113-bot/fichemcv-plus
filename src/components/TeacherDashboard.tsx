@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type FicheDashboardItem = {
+  student_id: string;
   fiche_id: string;
   class_name: string | null;
   first_name: string | null;
@@ -104,6 +105,11 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [completionFilter, setCompletionFilter] = useState("all");
   const [isFicheDetailsOpen, setIsFicheDetailsOpen] = useState(false);
+  const [resetPasswordMessage, setResetPasswordMessage] = useState("");
+  const [resetPasswordError, setResetPasswordError] = useState("");
+  const [temporaryPassword, setTemporaryPassword] = useState("");
+  const [isTemporaryPasswordCopied, setIsTemporaryPasswordCopied] = useState(false);
+  const [resetPasswordLoadingId, setResetPasswordLoadingId] = useState<string | null>(null);
 
   const classes = useMemo(() => {
     return Array.from(
@@ -250,6 +256,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       string,
       {
         key: string;
+        studentId: string;
         firstName: string;
         lastName: string;
         className: string;
@@ -269,6 +276,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       if (!summaries.has(key)) {
         summaries.set(key, {
           key,
+          studentId: fiche.student_id,
           firstName: fiche.first_name ?? "",
           lastName: fiche.last_name ?? "",
           className: fiche.class_name ?? "Classe non renseignée",
@@ -350,6 +358,53 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         .getElementById("teacher-fiche-list")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 0);
+  }
+
+  async function resetStudentPassword(studentId: string, studentName: string) {
+    const confirmed = window.confirm(
+      `Réinitialiser le mot de passe de ${studentName} ? Un mot de passe temporaire sera généré.`
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setResetPasswordMessage("");
+    setResetPasswordError("");
+    setTemporaryPassword("");
+    setIsTemporaryPasswordCopied(false);
+    setResetPasswordLoadingId(studentId);
+
+    try {
+      const response = await fetch("/api/admin/students/reset-password", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ studentId }),
+      });
+
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Réinitialisation impossible.");
+      }
+
+      const generatedTemporaryPassword = payload.temporaryPassword;
+
+      setTemporaryPassword(generatedTemporaryPassword);
+      setResetPasswordMessage(
+        `Mot de passe temporaire généré pour ${studentName}. Copie-le maintenant et transmets-le à l’élève.`
+      );
+    } catch (error) {
+      setResetPasswordError(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue pendant la réinitialisation."
+      );
+    } finally {
+      setResetPasswordLoadingId(null);
+    }
   }
 
   return (
@@ -687,6 +742,47 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           </p>
         </div>
 
+        {(resetPasswordMessage || resetPasswordError) && (
+          <div
+            className={`mb-4 rounded-xl border p-4 text-sm ${
+              resetPasswordError
+                ? "border-red-500/40 bg-red-500/10 text-red-200"
+                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+            }`}
+          >
+            <p>{resetPasswordError || resetPasswordMessage}</p>
+
+            {temporaryPassword && !resetPasswordError && (
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
+                <code className="rounded-lg border border-emerald-500/30 bg-slate-950 px-3 py-2 font-mono text-base text-emerald-100">
+                  {temporaryPassword}
+                </code>
+
+                <button
+                  type="button"
+                  onClick={async () => {
+                    await navigator.clipboard.writeText(temporaryPassword);
+                    setIsTemporaryPasswordCopied(true);
+
+                    window.setTimeout(() => {
+                      setIsTemporaryPasswordCopied(false);
+                    }, 2000);
+                  }}
+                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                    isTemporaryPasswordCopied
+                      ? "border-emerald-300 bg-emerald-400/20 text-emerald-50"
+                      : "border-emerald-500/40 text-emerald-100 hover:bg-emerald-950/40"
+                  }`}
+                >
+                  {isTemporaryPasswordCopied
+                    ? "Mot de passe copié ✓"
+                    : "Copier le mot de passe"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {studentSummaries.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <p className="text-sm text-slate-400">
@@ -788,19 +884,37 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                     </p>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={() =>
-                      focusStudentFiches(
-                        summary.firstName,
-                        summary.lastName,
-                        summary.className
-                      )
-                    }
-                    className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-medium text-sky-200 transition hover:bg-sky-950/40"
-                  >
-                    Voir ses fiches
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        focusStudentFiches(
+                          summary.firstName,
+                          summary.lastName,
+                          summary.className
+                        )
+                      }
+                      className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-medium text-sky-200 transition hover:bg-sky-950/40"
+                    >
+                      Voir ses fiches
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        resetStudentPassword(
+                          summary.studentId,
+                          `${summary.firstName} ${summary.lastName}`.trim()
+                        )
+                      }
+                      disabled={resetPasswordLoadingId === summary.studentId}
+                      className="rounded-xl border border-amber-500/40 px-3 py-2 text-xs font-medium text-amber-200 transition hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {resetPasswordLoadingId === summary.studentId
+                        ? "Réinitialisation..."
+                        : "Réinitialiser MDP"}
+                    </button>
+                  </div>
                 </div>
               </article>
             ))}
