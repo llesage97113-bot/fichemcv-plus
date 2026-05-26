@@ -4,6 +4,8 @@ import { useState } from "react";
 
 type GenerateEvaluationButtonProps = {
   ficheId: string;
+  initialReport?: PedagogicalReport | null;
+  initialReportCreatedAt?: string | null;
 };
 
 type PedagogicalReport = {
@@ -64,11 +66,16 @@ function ReportList({
 
 export default function GenerateEvaluationButton({
   ficheId,
+  initialReport = null,
+  initialReportCreatedAt = null,
 }: GenerateEvaluationButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
-  const [report, setReport] = useState<PedagogicalReport | null>(null);
+  const [report, setReport] = useState<PedagogicalReport | null>(initialReport);
+  const [reportCreatedAt, setReportCreatedAt] = useState<string | null>(
+    initialReportCreatedAt
+  );
 
   async function generateEvaluation() {
     const confirmed = window.confirm(
@@ -99,6 +106,7 @@ export default function GenerateEvaluationButton({
       }
 
       setReport(payload.report?.report_json ?? null);
+      setReportCreatedAt(payload.report?.created_at ?? null);
       setMessage(
         "Analyse pédagogique générée. Elle est enregistrée avec le statut “à vérifier”."
       );
@@ -158,6 +166,11 @@ export default function GenerateEvaluationButton({
               <p className="mt-1 text-xs text-slate-500">
                 Version : {report.version ?? "non renseignée"}
               </p>
+              {reportCreatedAt && (
+                <p className="mt-1 text-xs text-slate-500">
+                  Généré le : {new Date(reportCreatedAt).toLocaleString("fr-FR")}
+                </p>
+              )}
             </div>
 
             <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200">
