@@ -263,6 +263,10 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         lastName: string;
         className: string;
         totalFiches: number;
+        startedCount: number;
+        notStartedCount: number;
+        submittedCount: number;
+        finalizedCount: number;
         e31Created: number;
         e31Engaged: number;
         e32Created: number;
@@ -284,6 +288,10 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           lastName: fiche.last_name ?? "",
           className: fiche.class_name ?? "Classe non renseignée",
           totalFiches: 0,
+          startedCount: 0,
+          notStartedCount: 0,
+          submittedCount: 0,
+          finalizedCount: 0,
           e31Created: 0,
           e31Engaged: 0,
           e32Created: 0,
@@ -305,6 +313,24 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         !["non_commencee", "brouillon"].includes(fiche.status ?? "");
 
       summary.totalFiches += 1;
+
+      if (isEngaged) {
+        summary.startedCount += 1;
+      } else {
+        summary.notStartedCount += 1;
+      }
+
+      if (fiche.status === "soumise" || fiche.status === "corrigee") {
+        summary.submittedCount += 1;
+      }
+
+      if (
+        fiche.status === "validee" ||
+        fiche.status === "verrouillee" ||
+        fiche.status === "archivee"
+      ) {
+        summary.finalizedCount += 1;
+      }
 
       if (fiche.epreuve === "E31") {
         summary.e31Created += 1;
@@ -868,6 +894,44 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                   >
                     Analyses : <span className="font-bold">{summary.analysesToVerify}</span>
                   </span>
+                </div>
+
+                <div className="mb-3 grid gap-2 sm:grid-cols-4">
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      Démarrées
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-emerald-200">
+                      {summary.startedCount}/{summary.totalFiches}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      À démarrer
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-100">
+                      {summary.notStartedCount}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      À traiter
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-amber-200">
+                      {summary.submittedCount}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      Finalisées
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-sky-200">
+                      {summary.finalizedCount}
+                    </p>
+                  </div>
                 </div>
 
                 <div className="grid gap-2 sm:grid-cols-2">
