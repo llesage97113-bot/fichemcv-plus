@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type GenerateEvaluationButtonProps = {
   ficheId: string;
@@ -70,12 +70,46 @@ export default function GenerateEvaluationButton({
   initialReportCreatedAt = null,
 }: GenerateEvaluationButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingExistingReport, setIsLoadingExistingReport] = useState(true);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [report, setReport] = useState<PedagogicalReport | null>(initialReport);
   const [reportCreatedAt, setReportCreatedAt] = useState<string | null>(
     initialReportCreatedAt
   );
+
+  useEffect(() => {
+    async function loadLatestReport() {
+      setIsLoadingExistingReport(true);
+
+      try {
+        const response = await fetch(
+          `/api/admin/evaluations/generate?ficheId=${encodeURIComponent(
+            ficheId
+          )}`
+        );
+
+        const payload = await response.json();
+
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Chargement du rapport impossible.");
+        }
+
+        setReport(payload.report?.report_json ?? null);
+        setReportCreatedAt(payload.report?.created_at ?? null);
+      } catch (error) {
+        setErrorMessage(
+          error instanceof Error
+            ? error.message
+            : "Erreur inconnue pendant le chargement du rapport."
+        );
+      } finally {
+        setIsLoadingExistingReport(false);
+      }
+    }
+
+    loadLatestReport();
+  }, [ficheId]);
 
   async function generateEvaluation() {
     const confirmed = window.confirm(
@@ -143,6 +177,12 @@ export default function GenerateEvaluationButton({
           {isLoading ? "Analyse en cours..." : "Générer l’analyse"}
         </button>
       </div>
+
+      {isLoadingExistingReport && (
+        <p className="mt-3 rounded-xl border border-slate-700 bg-slate-950/60 p-3 text-sm text-slate-400">
+          Recherche d’une analyse existante…
+        </p>
+      )}
 
       {message && (
         <p className="mt-3 rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-3 text-sm text-emerald-200">

@@ -261,3 +261,93 @@ export async function POST(request: Request) {
     report,
   });
 }
+
+export async function GET(request: Request) {
+  const teacher = await requireTeacher();
+
+  if (!teacher) {
+    return NextResponse.json(
+      { error: "Accès réservé au professeur." },
+      { status: 403 }
+    );
+  }
+
+  const url = new URL(request.url);
+  const ficheId = url.searchParams.get("ficheId");
+
+  if (!ficheId) {
+    return NextResponse.json(
+      { error: "Identifiant fiche manquant." },
+      { status: 400 }
+    );
+  }
+
+  const admin = createAdminClient();
+
+  const { data: fiche, error: ficheError } = await admin
+    .from("fiches")
+    .select("id, student_id, epreuve")
+    .eq("id", ficheId)
+    .single();
+
+  if (ficheError || !fiche) {
+    return NextResponse.json(
+      { error: ficheError?.message ?? "Fiche introuvable." },
+      { status: 404 }
+    );
+  }
+
+  const { data: evaluations, error: evaluationsError } = await admin
+    .from("evaluations")
+    .select("id, status, created_at, source_fiches_json")
+    .eq("student_id", fiche.student_id)
+    .eq("epreuve", fiche.epreuve)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  if (evaluationsError) {
+    return NextResponse.json(
+      { error: evaluationsError.message },
+      { status: 500 }
+    );
+  }
+
+  const latestEvaluation = (evaluations ?? []).find((evaluation) => {
+    const sources = Array.isArray(evaluation.source_fiches_json)
+      ? evaluation.source_fiches_json
+      : [];
+
+    return sources.some((source) => {
+      const sourceFicheId = String(
+        (source as { fiche_id?: string | null }).fiche_id ?? ""
+      );
+
+      return sourceFicheId === ficheId;
+    });
+  });
+
+  if (!latestEvaluation) {
+    return NextResponse.json({
+      report: null,
+      evaluation: null,
+    });
+  }
+
+  const { data: report, error: reportError } = await admin
+    .from("evaluation_reports")
+    .select("*")
+    .eq("evaluation_id", latestEvaluation.id)
+    .eq("report_type", "quality")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (reportError) {
+    return NextResponse.json({ error: reportError.message }, { status: 500 });
+  }
+
+  return NextResponse.json({
+    evaluation: latestEvaluation,
+    report,
+  });
+}

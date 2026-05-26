@@ -6,6 +6,7 @@ import TeacherWorkflowActions from "@/components/TeacherWorkflowActions";
 import GenerateEvaluationButton from "@/components/GenerateEvaluationButton";
 import AppNavigation from "@/components/AppNavigation";
 import { requireRole } from "@/lib/auth/requireUser";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
@@ -63,6 +64,41 @@ export default async function FicheDetailPage({
     .select("*")
     .eq("fiche_id", id)
     .order("sort_order", { ascending: true });
+
+  const admin = createAdminClient();
+
+  const { data: evaluations } = await admin
+    .from("evaluations")
+    .select("id, status, created_at, source_fiches_json")
+    .eq("student_id", fiche.student_id)
+    .eq("epreuve", fiche.epreuve)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const latestEvaluation = (evaluations ?? []).find((evaluation) => {
+    const sources = Array.isArray(evaluation.source_fiches_json)
+      ? evaluation.source_fiches_json
+      : [];
+
+    return sources.some((source) => {
+      const sourceFicheId = String(
+        (source as { fiche_id?: string | null }).fiche_id ?? ""
+      );
+
+      return sourceFicheId === id;
+    });
+  });
+
+  const { data: latestReport } = latestEvaluation
+    ? await admin
+        .from("evaluation_reports")
+        .select("report_json, created_at")
+        .eq("evaluation_id", latestEvaluation.id)
+        .eq("report_type", "quality")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
 
   const completionScore = Number(fiche.completion_score ?? 0);
   const progressClasses = getGlobalProgressClasses(completionScore);
@@ -171,7 +207,11 @@ export default async function FicheDetailPage({
             status={fiche.status}
           />
 
-          <GenerateEvaluationButton ficheId={id} />
+          <GenerateEvaluationButton
+            ficheId={id}
+            initialReport={latestReport?.report_json ?? null}
+            initialReportCreatedAt={latestReport?.created_at ?? null}
+          />
         </header>
 
         {sectionsError && (

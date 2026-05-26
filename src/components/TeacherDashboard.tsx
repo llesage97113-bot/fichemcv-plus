@@ -16,6 +16,8 @@ type FicheDashboardItem = {
   completion_score: number | null;
   quality_status: string | null;
   active_comments_count: number | null;
+  latest_analysis_status?: string | null;
+  latest_analysis_created_at?: string | null;
 };
 type TeacherDashboardProps = {
   fiches: FicheDashboardItem[];
@@ -267,6 +269,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         e32Engaged: number;
         fragileCount: number;
         professorActions: number;
+        analysesToVerify: number;
       }
     >();
 
@@ -287,6 +290,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           e32Engaged: 0,
           fragileCount: 0,
           professorActions: 0,
+          analysesToVerify: 0,
         });
       }
 
@@ -322,6 +326,10 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
 
       if (["soumise", "corrigee", "validee", "verrouillee"].includes(fiche.status ?? "")) {
         summary.professorActions += 1;
+      }
+
+      if (fiche.latest_analysis_status === "a_verifier") {
+        summary.analysesToVerify += 1;
       }
     }
 
@@ -844,6 +852,16 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                     }`}
                   >
                     Fragiles : <span className="font-bold">{summary.fragileCount}</span>
+                  </span>
+
+                  <span
+                    className={`rounded-full border px-3 py-1 ${
+                      summary.analysesToVerify > 0
+                        ? "border-violet-500/40 bg-violet-500/10 text-violet-200"
+                        : "border-slate-700 bg-slate-900/70 text-slate-300"
+                    }`}
+                  >
+                    Analyses : <span className="font-bold">{summary.analysesToVerify}</span>
                   </span>
                 </div>
 

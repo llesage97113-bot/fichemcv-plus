@@ -4,6 +4,7 @@ import ClassRegistrationManager from "@/components/ClassRegistrationManager";
 import { supabase } from "@/lib/supabaseClient";
 import AppNavigation from "@/components/AppNavigation";
 import { requireRole } from "@/lib/auth/requireUser";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function Home() {
   await requireRole("professeur");
@@ -13,6 +14,91 @@ export default async function Home() {
     .select("*")
     .order("class_name", { ascending: true })
     .order("last_name", { ascending: true });
+
+  const fiches = data ?? [];
+  const admin = createAdminClient();
+
+  const ficheIds = new Set(
+    fiches
+      .map((fiche) => String(fiche.fiche_id ?? ""))
+      .filter(Boolean)
+  );
+
+  const studentIds = Array.from(
+    new Set(
+      fiches
+        .map((fiche) => String(fiche.student_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+
+  const { data: evaluations } =
+    studentIds.length > 0
+      ? await admin
+          .from("evaluations")
+          .select("id, student_id, epreuve, status, created_at, source_fiches_json")
+          .in("student_id", studentIds)
+          .order("created_at", { ascending: false })
+      : { data: null };
+
+  function extractSourceFicheIds(sourceFichesJson: unknown) {
+    let sources: unknown = sourceFichesJson;
+
+    if (typeof sources === "string") {
+      try {
+        sources = JSON.parse(sources);
+      } catch {
+        return [];
+      }
+    }
+
+    if (!Array.isArray(sources)) {
+      return [];
+    }
+
+    return sources
+      .map((source) => {
+        if (!source || typeof source !== "object") {
+          return "";
+        }
+
+        return String(
+          (source as { fiche_id?: string | null }).fiche_id ?? ""
+        );
+      })
+      .filter(Boolean);
+  }
+
+  const analysisByFicheId = new Map<
+    string,
+    { status: string | null; created_at: string | null }
+  >();
+
+  for (const evaluation of evaluations ?? []) {
+    const sourceFicheIds = extractSourceFicheIds(evaluation.source_fiches_json);
+
+    for (const sourceFicheId of sourceFicheIds) {
+      if (
+        ficheIds.has(sourceFicheId) &&
+        !analysisByFicheId.has(sourceFicheId)
+      ) {
+        analysisByFicheId.set(sourceFicheId, {
+          status: evaluation.status ?? null,
+          created_at: evaluation.created_at ?? null,
+        });
+      }
+    }
+  }
+
+  const enrichedFiches = fiches.map((fiche) => {
+    const latestAnalysis = analysisByFicheId.get(String(fiche.fiche_id ?? ""));
+
+    return {
+      ...fiche,
+      latest_analysis_status: latestAnalysis?.status ?? null,
+      latest_analysis_created_at: latestAnalysis?.created_at ?? null,
+    };
+  });
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
@@ -51,7 +137,7 @@ export default async function Home() {
         <PendingStudentRegistrations />
 
         {!error && data && data.length > 0 && (
-          <TeacherDashboard fiches={data} />
+          <TeacherDashboard fiches={enrichedFiches} />
         )}
       </section>
     </main>
