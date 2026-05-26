@@ -362,9 +362,14 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     setIsFicheDetailsOpen(true);
 
     window.setTimeout(() => {
-      document
-        .getElementById("teacher-fiche-list")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      const firstFicheResult =
+        document.getElementById("teacher-first-fiche-result") ??
+        document.getElementById("teacher-fiche-list");
+
+      firstFicheResult?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }, 0);
   }
 
@@ -951,6 +956,10 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
             Modifie les critères ou réinitialise les filtres.
           </p>
         </div>
+      )}
+
+      {isFicheDetailsOpen && filteredFiches.length > 0 && (
+        <div id="teacher-first-fiche-result" className="scroll-mt-6" />
       )}
 
       {isFicheDetailsOpen && filteredFiches.length > 0 && (
