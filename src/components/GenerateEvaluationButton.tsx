@@ -144,6 +144,12 @@ export default function GenerateEvaluationButton({
       setMessage(
         "Analyse pédagogique générée. Elle est enregistrée avec le statut “à vérifier”."
       );
+
+      window.setTimeout(() => {
+        document
+          .getElementById("generated-analysis-report")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 0);
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -197,7 +203,10 @@ export default function GenerateEvaluationButton({
       )}
 
       {report && (
-        <section className="mt-4 rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
+        <section
+          id="generated-analysis-report"
+          className="mt-4 scroll-mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-4"
+        >
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-100">
