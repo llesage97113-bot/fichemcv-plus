@@ -1,17 +1,11 @@
-const CACHE_NAME = "fichemcv-plus-v1";
+const CACHE_NAME = "fichemcv-plus-v2";
+const STATIC_ASSETS = ["/icons/fichemcv-icon.svg"];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
 
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) =>
-      cache.addAll([
-        "/",
-        "/login",
-        "/inscription-eleve",
-        "/icons/fichemcv-icon.svg"
-      ])
-    )
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
 });
 
