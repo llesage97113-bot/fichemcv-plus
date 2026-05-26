@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import SectionEditor from "@/components/SectionEditor";
 import TeacherWorkflowActions from "@/components/TeacherWorkflowActions";
+import GenerateEvaluationButton from "@/components/GenerateEvaluationButton";
 import AppNavigation from "@/components/AppNavigation";
 import { requireRole } from "@/lib/auth/requireUser";
 
@@ -169,6 +170,8 @@ export default async function FicheDetailPage({
             ficheId={id}
             status={fiche.status}
           />
+
+          <GenerateEvaluationButton ficheId={id} />
         </header>
 
         {sectionsError && (
