@@ -378,15 +378,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     setCompletionFilter("all");
   }
 
-  function focusStudentFiches(firstName: string, lastName: string, className: string) {
-    setSearch(`${firstName} ${lastName}`.trim());
-    setClassFilter(className === "Classe non renseignée" ? "all" : className);
-    setEpreuveFilter("all");
-    setNumeroFicheFilter("all");
-    setStatusFilter("all");
-    setCompletionFilter("all");
-    setIsFicheDetailsOpen(true);
-
+  function scrollToFicheResults() {
     window.setTimeout(() => {
       const firstFicheResult =
         document.getElementById("teacher-first-fiche-result") ??
@@ -397,6 +389,28 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         block: "start",
       });
     }, 0);
+  }
+
+  function focusStudentFiches(firstName: string, lastName: string, className: string) {
+    setSearch(`${firstName} ${lastName}`.trim());
+    setClassFilter(className === "Classe non renseignée" ? "all" : className);
+    setEpreuveFilter("all");
+    setNumeroFicheFilter("all");
+    setStatusFilter("all");
+    setCompletionFilter("all");
+    setIsFicheDetailsOpen(true);
+    scrollToFicheResults();
+  }
+
+  function focusStudentTeacherActions(firstName: string, lastName: string, className: string) {
+    setSearch(`${firstName} ${lastName}`.trim());
+    setClassFilter(className === "Classe non renseignée" ? "all" : className);
+    setEpreuveFilter("all");
+    setNumeroFicheFilter("all");
+    setStatusFilter("soumise");
+    setCompletionFilter("all");
+    setIsFicheDetailsOpen(true);
+    scrollToFicheResults();
   }
 
   async function resetStudentPassword(studentId: string, studentName: string) {
@@ -984,6 +998,21 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                       className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-medium text-sky-200 transition hover:bg-sky-950/40"
                     >
                       Voir ses fiches
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        focusStudentTeacherActions(
+                          summary.firstName,
+                          summary.lastName,
+                          summary.className
+                        )
+                      }
+                      disabled={summary.professorActions === 0}
+                      className="rounded-xl border border-amber-500/40 px-3 py-2 text-xs font-medium text-amber-200 transition hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-40"
+                    >
+                      Voir à traiter
                     </button>
 
                     <button
