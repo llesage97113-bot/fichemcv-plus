@@ -89,6 +89,13 @@ function getCompletionBucket(score: number) {
   return "vide";
 }
 
+function normalizeClassName(value: string | null | undefined) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
+}
+
 export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
@@ -143,7 +150,8 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         title.includes(normalizedSearch);
 
       const matchesClass =
-        classFilter === "all" || fiche.class_name === classFilter;
+        classFilter === "all" ||
+        normalizeClassName(fiche.class_name) === normalizeClassName(classFilter);
 
       const matchesEpreuve =
         epreuveFilter === "all" || fiche.epreuve === epreuveFilter;
@@ -178,6 +186,12 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     completionFilter,
   ]);
 
+  const displayedClasses = useMemo(() => {
+    return Array.from(
+      new Set(filteredFiches.map((fiche) => fiche.class_name ?? "Classe non renseignée"))
+    ).sort();
+  }, [filteredFiches]);
+
   const dashboardStats = useMemo(() => {
     return {
       total: fiches.length,
@@ -197,10 +211,10 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     };
   }, [fiches]);
   const priorityFiches = useMemo(() => {
-    return fiches.filter((fiche) =>
+    return filteredFiches.filter((fiche) =>
       ["soumise", "corrigee", "validee", "verrouillee"].includes(fiche.status ?? "")
     );
-  }, [fiches]);
+  }, [filteredFiches]);
 
   const priorityGroups = useMemo(() => {
     return [
@@ -348,6 +362,11 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
             </h2>
             <p className="mt-1 text-xs text-slate-400">
               {filteredFiches.length} fiche(s) affichée(s) sur {fiches.length}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">
+              Filtre classe : {classFilter === "all" ? "Toutes" : classFilter}
+              {" · "}
+              Classes affichées : {displayedClasses.join(", ") || "aucune"}
             </p>
           </div>
 
@@ -511,137 +530,6 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         )}
       </section>
 
-      <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-slate-100">
-            Synthèse par élève
-          </h2>
-          <p className="text-sm text-slate-400">
-            Vue rapide de l’avancement des fiches par élève, selon les filtres actifs.
-          </p>
-        </div>
-
-        {studentSummaries.length === 0 ? (
-          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-            <p className="text-sm text-slate-400">
-              Aucun élève ne correspond aux filtres actifs.
-            </p>
-          </div>
-        ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {studentSummaries.map((summary) => (
-              <article
-                key={summary.key}
-                className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
-              >
-                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-base font-semibold text-slate-100">
-                      {summary.firstName} {summary.lastName}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {summary.className} · {summary.totalFiches} fiche(s) affichée(s)
-                    </p>
-                  </div>
-
-                  {summary.professorActions > 0 ? (
-                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
-                      {summary.professorActions} action(s) prof
-                    </span>
-                  ) : (
-                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                      À jour
-                    </span>
-                  )}
-                </div>
-
-                <div className="mb-3 flex flex-wrap gap-2 text-xs font-medium">
-                  <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
-                    E31 : <span className="font-bold">{summary.e31Engaged}/3</span>
-                  </span>
-
-                  <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-indigo-200">
-                    E32 : <span className="font-bold">{summary.e32Engaged}/4</span>
-                  </span>
-
-                  <span
-                    className={`rounded-full border px-3 py-1 ${
-                      summary.professorActions > 0
-                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                        : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                    }`}
-                  >
-                    Actions prof : <span className="font-bold">{summary.professorActions}</span>
-                  </span>
-
-                  <span
-                    className={`rounded-full border px-3 py-1 ${
-                      summary.fragileCount > 0
-                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                        : "border-slate-700 bg-slate-900/70 text-slate-300"
-                    }`}
-                  >
-                    Fragiles : <span className="font-bold">{summary.fragileCount}</span>
-                  </span>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Détail E31
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">
-                      {summary.e31Engaged}/3 engagée(s)
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {summary.e31Created}/3 créée(s)
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Détail E32
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">
-                      {summary.e32Engaged}/4 engagée(s)
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {summary.e32Created}/4 créée(s)
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                  {summary.fragileCount > 0 ? (
-                    <p className="text-xs text-amber-200">
-                      ⚠️ {summary.fragileCount} fiche(s) fragile(s) à surveiller.
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-500">
-                      Aucun signal fragile sur les fiches affichées.
-                    </p>
-                  )}
-
-                  <button
-                    type="button"
-                    onClick={() =>
-                      focusStudentFiches(
-                        summary.firstName,
-                        summary.lastName,
-                        summary.className
-                      )
-                    }
-                    className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-medium text-sky-200 transition hover:bg-sky-950/40"
-                  >
-                    Voir ses fiches
-                  </button>
-                </div>
-              </article>
-            ))}
-          </div>
-        )}
-      </section>
-
       <section
         id="teacher-fiche-list"
         className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm"
@@ -649,7 +537,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">
-              Filtres du tableau de bord
+              Filtres du cockpit
             </h2>
             <p className="text-sm text-slate-400">
               {filteredFiches.length} fiche(s) affichée(s) sur {fiches.length}
@@ -788,6 +676,139 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           </div>
         )}
       </section>
+
+      <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-slate-100">
+            Synthèse par élève
+          </h2>
+          <p className="text-sm text-slate-400">
+            Vue rapide de l’avancement des fiches par élève, selon les filtres actifs.
+          </p>
+        </div>
+
+        {studentSummaries.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+            <p className="text-sm text-slate-400">
+              Aucun élève ne correspond aux filtres actifs.
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {studentSummaries.map((summary) => (
+              <article
+                key={summary.key}
+                className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
+              >
+                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-base font-semibold text-slate-100">
+                      {summary.firstName} {summary.lastName}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {summary.className} · {summary.totalFiches} fiche(s) affichée(s)
+                    </p>
+                  </div>
+
+                  {summary.professorActions > 0 ? (
+                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
+                      {summary.professorActions} action(s) prof
+                    </span>
+                  ) : (
+                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
+                      À jour
+                    </span>
+                  )}
+                </div>
+
+                <div className="mb-3 flex flex-wrap gap-2 text-xs font-medium">
+                  <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
+                    E31 : <span className="font-bold">{summary.e31Engaged}/3</span>
+                  </span>
+
+                  <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-indigo-200">
+                    E32 : <span className="font-bold">{summary.e32Engaged}/4</span>
+                  </span>
+
+                  <span
+                    className={`rounded-full border px-3 py-1 ${
+                      summary.professorActions > 0
+                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                        : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                    }`}
+                  >
+                    Actions prof : <span className="font-bold">{summary.professorActions}</span>
+                  </span>
+
+                  <span
+                    className={`rounded-full border px-3 py-1 ${
+                      summary.fragileCount > 0
+                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                        : "border-slate-700 bg-slate-900/70 text-slate-300"
+                    }`}
+                  >
+                    Fragiles : <span className="font-bold">{summary.fragileCount}</span>
+                  </span>
+                </div>
+
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      Détail E31
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-100">
+                      {summary.e31Engaged}/3 engagée(s)
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {summary.e31Created}/3 créée(s)
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
+                    <p className="text-xs uppercase tracking-wide text-slate-500">
+                      Détail E32
+                    </p>
+                    <p className="mt-1 text-sm font-semibold text-slate-100">
+                      {summary.e32Engaged}/4 engagée(s)
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {summary.e32Created}/4 créée(s)
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+                  {summary.fragileCount > 0 ? (
+                    <p className="text-xs text-amber-200">
+                      ⚠️ {summary.fragileCount} fiche(s) fragile(s) à surveiller.
+                    </p>
+                  ) : (
+                    <p className="text-xs text-slate-500">
+                      Aucun signal fragile sur les fiches affichées.
+                    </p>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      focusStudentFiches(
+                        summary.firstName,
+                        summary.lastName,
+                        summary.className
+                      )
+                    }
+                    className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-medium text-sky-200 transition hover:bg-sky-950/40"
+                  >
+                    Voir ses fiches
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+
 
       {isFicheDetailsOpen && filteredFiches.length === 0 && (
         <div className="rounded-lg border border-yellow-500 bg-yellow-950/40 p-4">

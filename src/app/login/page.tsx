@@ -3,6 +3,7 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { normalizeEmail } from "@/lib/normalizers";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,8 +19,10 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrorMessage("");
 
+    const normalizedEmail = normalizeEmail(email);
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: normalizedEmail,
       password,
     });
 
@@ -69,6 +72,10 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                inputMode="email"
                 required
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}

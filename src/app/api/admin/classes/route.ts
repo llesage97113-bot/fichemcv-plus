@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { normalizeRegistrationCode } from "@/lib/normalizers";
 
 async function requireTeacher() {
   const supabase = await createClient();
@@ -15,14 +16,6 @@ async function requireTeacher() {
   }
 
   return user;
-}
-
-function normalizeRegistrationCode(value: string) {
-  return value
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "-")
-    .replace(/[^A-Z0-9-]/g, "");
 }
 
 export async function GET() {

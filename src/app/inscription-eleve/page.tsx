@@ -122,6 +122,9 @@ export default function StudentRegistrationPage() {
                 </label>
                 <input
                   required
+                  autoCapitalize="characters"
+                  autoCorrect="off"
+                  spellCheck={false}
                   value={registrationCode}
                   onChange={(event) => setRegistrationCode(event.target.value)}
                   placeholder="TMCVB-2026"
@@ -136,6 +139,9 @@ export default function StudentRegistrationPage() {
                   </label>
                   <input
                     required
+                    autoCapitalize="words"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={firstName}
                     onChange={(event) => setFirstName(event.target.value)}
                     className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-sky-400"
@@ -148,6 +154,9 @@ export default function StudentRegistrationPage() {
                   </label>
                   <input
                     required
+                    autoCapitalize="words"
+                    autoCorrect="off"
+                    spellCheck={false}
                     value={lastName}
                     onChange={(event) => setLastName(event.target.value)}
                     className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-sky-400"

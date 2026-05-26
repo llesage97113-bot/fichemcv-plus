@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-function normalizePart(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/['’]/g, "")
-    .replace(/[^a-z0-9]+/g, ".")
-    .replace(/^\.+|\.+$/g, "");
-}
+import {
+  normalizeEmail,
+  normalizeIdentifierPart,
+  normalizePersonName,
+  normalizeRegistrationCode,
+} from "@/lib/normalizers";
 
 function generateStudentCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -27,8 +23,8 @@ async function generateUniqueEmail(
   firstName: string,
   lastName: string
 ) {
-  const first = normalizePart(firstName);
-  const last = normalizePart(lastName);
+  const first = normalizeIdentifierPart(firstName);
+  const last = normalizeIdentifierPart(lastName);
 
   let base = first && last ? `${first}.${last}` : `eleve.${crypto.randomUUID().slice(0, 8)}`;
   let email = `${base}@fichemcv.local`;
@@ -62,9 +58,11 @@ export async function POST(request: Request) {
 
   const body = await request.json().catch(() => null);
 
-  const firstName = String(body?.firstName ?? "").trim();
-  const lastName = String(body?.lastName ?? "").trim();
-  const registrationCode = String(body?.registrationCode ?? "").trim().toUpperCase();
+  const firstName = normalizePersonName(String(body?.firstName ?? ""));
+  const lastName = normalizePersonName(String(body?.lastName ?? ""));
+  const registrationCode = normalizeRegistrationCode(
+    String(body?.registrationCode ?? "")
+  );
   const password = String(body?.password ?? "");
   const confirmPassword = String(body?.confirmPassword ?? "");
 
@@ -103,7 +101,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const email = await generateUniqueEmail(admin, firstName, lastName);
+  const email = normalizeEmail(await generateUniqueEmail(admin, firstName, lastName));
   const studentCode = generateStudentCode();
 
   const { data: authData, error: authError } =
