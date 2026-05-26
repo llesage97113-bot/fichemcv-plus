@@ -92,6 +92,10 @@ function getCompletionBucket(score: number) {
   return "vide";
 }
 
+function isTeacherActionStatus(status: string | null | undefined) {
+  return ["soumise", "corrigee", "validee", "verrouillee"].includes(status ?? "");
+}
+
 function normalizeClassName(value: string | null | undefined) {
   return String(value ?? "")
     .trim()
@@ -107,6 +111,9 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [completionFilter, setCompletionFilter] = useState("all");
   const [isFicheDetailsOpen, setIsFicheDetailsOpen] = useState(false);
+  const [isQuickPilotOpen, setIsQuickPilotOpen] = useState(false);
+  const [isTeacherActionsOpen, setIsTeacherActionsOpen] = useState(false);
+  const [isWorkflowSummaryOpen, setIsWorkflowSummaryOpen] = useState(false);
   const [resetPasswordMessage, setResetPasswordMessage] = useState("");
   const [resetPasswordError, setResetPasswordError] = useState("");
   const [temporaryPassword, setTemporaryPassword] = useState("");
@@ -169,7 +176,9 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         String(fiche.numero_fiche) === numeroFicheFilter;
 
       const matchesStatus =
-        statusFilter === "all" || fiche.status === statusFilter;
+        statusFilter === "all" ||
+        (statusFilter === "teacher_actions" && isTeacherActionStatus(fiche.status)) ||
+        fiche.status === statusFilter;
 
       const matchesCompletion =
         completionFilter === "all" ||
@@ -220,7 +229,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   }, [fiches]);
   const priorityFiches = useMemo(() => {
     return filteredFiches.filter((fiche) =>
-      ["soumise", "corrigee", "validee", "verrouillee"].includes(fiche.status ?? "")
+      isTeacherActionStatus(fiche.status)
     );
   }, [filteredFiches]);
 
@@ -350,7 +359,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         summary.fragileCount += 1;
       }
 
-      if (["soumise", "corrigee", "validee", "verrouillee"].includes(fiche.status ?? "")) {
+      if (isTeacherActionStatus(fiche.status)) {
         summary.professorActions += 1;
       }
 
@@ -407,7 +416,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     setClassFilter(className === "Classe non renseignée" ? "all" : className);
     setEpreuveFilter("all");
     setNumeroFicheFilter("all");
-    setStatusFilter("soumise");
+    setStatusFilter("teacher_actions");
     setCompletionFilter("all");
     setIsFicheDetailsOpen(true);
     scrollToFicheResults();
@@ -471,101 +480,140 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
             <p className="mt-1 text-xs text-slate-400">
               {filteredFiches.length} fiche(s) affichée(s) sur {fiches.length}
             </p>
-            <p className="mt-1 text-xs text-slate-500">
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsQuickPilotOpen((current) => !current)}
+            className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-950/40"
+          >
+            {isQuickPilotOpen ? "Masquer le pilotage" : "Afficher le pilotage"}
+          </button>
+        </div>
+
+        {isQuickPilotOpen && (
+          <div className="mt-4 border-t border-slate-800 pt-4">
+            <p className="mb-3 text-xs text-slate-500">
               Filtre classe : {classFilter === "all" ? "Toutes" : classFilter}
               {" · "}
               Classes affichées : {displayedClasses.join(", ") || "aucune"}
             </p>
-          </div>
 
-          <div className="flex flex-wrap gap-2 text-xs font-medium">
-            <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-slate-300">
-              Total : <span className="font-bold text-slate-100">{dashboardStats.total}</span>
-            </span>
+            <div className="flex flex-wrap gap-2 text-xs font-medium">
+              <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-slate-300">
+                Total : <span className="font-bold text-slate-100">{dashboardStats.total}</span>
+              </span>
 
-            <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-amber-200">
-              Brouillons : <span className="font-bold">{dashboardStats.drafts}</span>
-            </span>
+              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-amber-200">
+                Brouillons : <span className="font-bold">{dashboardStats.drafts}</span>
+              </span>
 
-            <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
-              Soumises : <span className="font-bold">{dashboardStats.submitted}</span>
-            </span>
+              <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
+                Soumises : <span className="font-bold">{dashboardStats.submitted}</span>
+              </span>
 
-            <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-orange-200">
-              À corriger : <span className="font-bold">{dashboardStats.correction}</span>
-            </span>
+              <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-orange-200">
+                À corriger : <span className="font-bold">{dashboardStats.correction}</span>
+              </span>
 
-            <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-emerald-200">
-              Finalisées : <span className="font-bold">{dashboardStats.final}</span>
-            </span>
-          </div>
-        </div>
-      </section>
-
-              <section className="mb-8 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
-        <div className="mb-3">
-          <h2 className="text-lg font-semibold text-slate-100">
-            Cycle de traitement des fiches
-          </h2>
-          <p className="text-sm text-slate-400">
-            Suivi du parcours complet d’une fiche, de sa rédaction jusqu’à son archivage.
-          </p>
-        </div>
-
-        <div className="flex flex-wrap gap-2 text-xs font-medium">
-          <span className="rounded-full border border-slate-700 px-3 py-1 text-slate-300">Brouillon</span>
-          <span className="text-slate-500">→</span>
-          <span className="rounded-full border border-sky-500/40 px-3 py-1 text-sky-300">Soumise</span>
-          <span className="text-slate-500">→</span>
-          <span className="rounded-full border border-amber-500/40 px-3 py-1 text-amber-300">À corriger</span>
-          <span className="text-slate-500">→</span>
-          <span className="rounded-full border border-indigo-500/40 px-3 py-1 text-indigo-300">Corrigée</span>
-          <span className="text-slate-500">→</span>
-          <span className="rounded-full border border-emerald-500/40 px-3 py-1 text-emerald-300">Validée</span>
-          <span className="text-slate-500">→</span>
-          <span className="rounded-full border border-purple-500/40 px-3 py-1 text-purple-300">Verrouillée</span>
-          <span className="text-slate-500">→</span>
-          <span className="rounded-full border border-slate-500 px-3 py-1 text-slate-300">Archivée</span>
-        </div>
-
-        <p className="mt-3 text-sm text-slate-400">
-          Une fiche archivée reste complète, consultable en lecture seule et ne doit jamais apparaître vierge.
-        </p>
-      </section>
-
-<section className="mb-8 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
-        <div className="mb-5">
-          <h2 className="text-lg font-semibold text-slate-100">
-            Actions professeur — {priorityFiches.length} fiche(s) à traiter
-          </h2>
-          <p className="text-sm text-slate-400">
-            {priorityFiches.length > 0
-              ? "Les fiches sont regroupées selon l’action attendue dans le workflow."
-              : "Aucune action urgente actuellement : toutes les fiches sont à jour dans le workflow."}
-          </p>
-        </div>
-
-        {priorityFiches.length === 0 && (
-          <div className="rounded-2xl border border-emerald-400/20 bg-slate-950/60 p-4">
-            <p className="mb-3 text-sm font-medium text-emerald-100">
-              ✅ Toutes les fiches sont à jour dans le workflow.
-            </p>
-
-            <div className="flex flex-wrap gap-2">
-              {priorityGroups.map((group) => (
-                <span
-                  key={group.status}
-                  className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300"
-                >
-                  {group.title} : {group.items.length}
-                </span>
-              ))}
+              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-emerald-200">
+                Finalisées : <span className="font-bold">{dashboardStats.final}</span>
+              </span>
             </div>
           </div>
         )}
+      </section>
 
-        {priorityFiches.length > 0 && (
-          <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-8 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-100">
+              Cycle de traitement des fiches
+            </h2>
+            <p className="text-sm text-slate-400">
+              Rappel du parcours complet d’une fiche, de sa rédaction jusqu’à son archivage.
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsWorkflowSummaryOpen((current) => !current)}
+            className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-950/40"
+          >
+            {isWorkflowSummaryOpen ? "Masquer le cycle" : "Afficher le cycle"}
+          </button>
+        </div>
+
+        {isWorkflowSummaryOpen && (
+          <div className="mt-4">
+            <div className="flex flex-wrap gap-2 text-xs font-medium">
+              <span className="rounded-full border border-slate-700 px-3 py-1 text-slate-300">Brouillon</span>
+              <span className="text-slate-500">→</span>
+              <span className="rounded-full border border-sky-500/40 px-3 py-1 text-sky-300">Soumise</span>
+              <span className="text-slate-500">→</span>
+              <span className="rounded-full border border-amber-500/40 px-3 py-1 text-amber-300">À corriger</span>
+              <span className="text-slate-500">→</span>
+              <span className="rounded-full border border-indigo-500/40 px-3 py-1 text-indigo-300">Corrigée</span>
+              <span className="text-slate-500">→</span>
+              <span className="rounded-full border border-emerald-500/40 px-3 py-1 text-emerald-300">Validée</span>
+              <span className="text-slate-500">→</span>
+              <span className="rounded-full border border-purple-500/40 px-3 py-1 text-purple-300">Verrouillée</span>
+              <span className="text-slate-500">→</span>
+              <span className="rounded-full border border-slate-500 px-3 py-1 text-slate-300">Archivée</span>
+            </div>
+
+            <p className="mt-3 text-sm text-slate-400">
+              Une fiche archivée reste complète, consultable en lecture seule et ne doit jamais apparaître vierge.
+            </p>
+          </div>
+        )}
+      </section>
+
+<section className="mb-8 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-100">
+              Actions professeur — {priorityFiches.length} fiche(s) à traiter
+            </h2>
+            <p className="text-sm text-slate-400">
+              {priorityFiches.length > 0
+                ? "Les fiches sont regroupées selon l’action attendue dans le workflow."
+                : "Aucune action urgente actuellement : toutes les fiches sont à jour dans le workflow."}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setIsTeacherActionsOpen((current) => !current)}
+            className="rounded-xl border border-amber-500/40 px-3 py-2 text-xs font-semibold text-amber-200 transition hover:bg-amber-950/30"
+          >
+            {isTeacherActionsOpen ? "Masquer le détail" : "Afficher le détail"}
+          </button>
+        </div>
+
+        {isTeacherActionsOpen && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {priorityGroups.map((group) => (
+              <span
+                key={group.status}
+                className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300"
+              >
+                {group.title} : {group.items.length}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {isTeacherActionsOpen && priorityFiches.length === 0 && (
+          <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-slate-950/60 p-4">
+            <p className="text-sm font-medium text-emerald-100">
+              ✅ Toutes les fiches sont à jour dans le workflow.
+            </p>
+          </div>
+        )}
+
+        {isTeacherActionsOpen && priorityFiches.length > 0 && (
+          <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
             {priorityGroups.map((group) => (
               <div
                 key={group.status}
@@ -749,6 +797,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
             >
               <option value="all">Tous les statuts</option>
+              <option value="teacher_actions">Actions prof</option>
               {statuses.map((status) => (
                 <option key={status} value={status ?? ""}>
                   {status}
