@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -117,6 +118,24 @@ export default function LoginPage() {
               {isLoading ? "Connexion en cours..." : "Se connecter"}
             </button>
           </form>
+
+          <div className="mt-6 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
+            <p className="text-sm font-semibold text-sky-100">
+              Première connexion ?
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-300">
+              Les élèves peuvent créer leur compte avec le code d’inscription transmis
+              par leur professeur. Les accès professeur sont créés séparément par
+              l’administrateur de l’application.
+            </p>
+
+            <Link
+              href="/inscription-eleve"
+              className="mt-4 inline-flex w-full items-center justify-center rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400"
+            >
+              Créer mon compte élève
+            </Link>
+          </div>
         </div>
       </section>
     </main>
