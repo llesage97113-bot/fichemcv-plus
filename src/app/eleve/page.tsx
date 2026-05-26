@@ -408,6 +408,37 @@ export default async function StudentDashboardPage({
           </section>
         )}
 
+        <section className="mb-6 rounded-2xl border border-sky-500/30 bg-sky-500/10 p-5 shadow-sm">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-sky-300">
+                Consigne professeur
+              </p>
+
+              <h2 className="mt-2 text-xl font-bold text-slate-100">
+                Test mobilité Espagne — première fiche
+              </h2>
+
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                Commence par compléter une première fiche en lien avec ta situation
+                observée ou vécue en entreprise pendant la mobilité. Décris clairement
+                le contexte, les acteurs concernés, l’action réalisée ou observée, ainsi
+                que les éléments utiles pour ton analyse.
+              </p>
+
+              <p className="mt-3 text-sm leading-6 text-slate-400">
+                Tu peux utiliser quelques mots ou expressions en espagnol si cela aide
+                à décrire la situation réelle, mais la fiche doit rester compréhensible
+                pour le professeur.
+              </p>
+            </div>
+
+            <span className="inline-flex rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200">
+              Travail à démarrer
+            </span>
+          </div>
+        </section>
+
         {error && (
           <div className="mb-6 rounded-lg border border-red-500 bg-red-950/40 p-4">
             <p className="font-semibold text-red-300">Erreur Supabase</p>
