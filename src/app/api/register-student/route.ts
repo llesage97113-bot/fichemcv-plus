@@ -101,6 +101,43 @@ export async function POST(request: Request) {
     );
   }
 
+  const { data: existingStudents, error: existingStudentsError } = await admin
+    .from("students")
+    .select("id, first_name, last_name, registration_status")
+    .eq("class_id", classData.id);
+
+  if (existingStudentsError) {
+    return NextResponse.json(
+      { error: existingStudentsError.message },
+      { status: 500 }
+    );
+  }
+
+  const duplicateStudent = (existingStudents ?? []).find((student) => {
+    const existingFirstName = normalizePersonName(
+      String(student.first_name ?? "")
+    ).toLowerCase();
+
+    const existingLastName = normalizePersonName(
+      String(student.last_name ?? "")
+    ).toLowerCase();
+
+    return (
+      existingFirstName === firstName.toLowerCase() &&
+      existingLastName === lastName.toLowerCase()
+    );
+  });
+
+  if (duplicateStudent) {
+    return NextResponse.json(
+      {
+        error:
+          "Une inscription existe déjà avec ce prénom et ce nom dans cette classe. Si tu penses qu’il s’agit d’une erreur, contacte ton professeur.",
+      },
+      { status: 409 }
+    );
+  }
+
   const email = normalizeEmail(await generateUniqueEmail(admin, firstName, lastName));
   const studentCode = generateStudentCode();
 
