@@ -116,22 +116,6 @@ export default function StudentRegistrationPage() {
             </div>
           ) : (
             <>
-              <section className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
-                <p className="text-sm font-semibold text-amber-200">
-                  Tu as déjà créé ton compte ?
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Ne refais pas une inscription. Si tu as déjà créé ton compte,
-                  attends la validation du professeur puis connecte-toi directement.
-                </p>
-                <Link
-                  href="/login"
-                  className="mt-3 inline-flex rounded-xl border border-amber-500/40 px-4 py-2 text-sm font-semibold text-amber-100 transition hover:bg-amber-950/40"
-                >
-                  Se connecter
-                </Link>
-              </section>
-
               <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-200">
@@ -211,22 +195,27 @@ export default function StudentRegistrationPage() {
 
               {errorMessage && (
                 <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
-                  <p>{errorMessage}</p>
+                  {errorMessage.includes("Une inscription existe déjà") ? (
+                    <div>
+                      <p className="text-sm font-semibold text-red-100">
+                        Tu as probablement déjà un compte.
+                      </p>
 
-                  {errorMessage.includes("Une inscription existe déjà") && (
-                    <div className="mt-3">
-                      <p className="mb-2 text-red-100/80">
-                        Si ton compte a déjà été créé et validé par le professeur,
-                        utilise directement la page de connexion.
+                      <p className="mt-2 text-sm leading-6 text-red-100/80">
+                        Ne refais pas une inscription. Si ton compte a été validé
+                        par le professeur, va directement sur la page de connexion
+                        avec ton identifiant et ton mot de passe.
                       </p>
 
                       <Link
                         href="/login"
-                        className="inline-flex rounded-xl border border-red-400/50 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-950/40"
+                        className="mt-3 inline-flex rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-400"
                       >
-                        Se connecter
+                        Aller à la connexion
                       </Link>
                     </div>
+                  ) : (
+                    <p className="font-semibold">{errorMessage}</p>
                   )}
                 </div>
               )}
