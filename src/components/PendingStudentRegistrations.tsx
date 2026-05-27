@@ -19,6 +19,10 @@ type PendingRegistration = {
     role: string | null;
     is_active: boolean | null;
   } | null;
+  possible_duplicate?: boolean;
+  duplicate_student_id?: string | null;
+  duplicate_registration_status?: string | null;
+  duplicate_created_at?: string | null;
 };
 
 export default function PendingStudentRegistrations() {
@@ -85,10 +89,14 @@ export default function PendingStudentRegistrations() {
   }
 
   async function handleAction(studentId: string, action: "validate" | "reject") {
+    const registration = registrations.find((item) => item.id === studentId);
+
     const confirmed = window.confirm(
-      action === "validate"
-        ? "Valider cette inscription élève ?"
-        : "Refuser cette inscription élève ? Le compte applicatif sera désactivé."
+      action === "validate" && registration?.possible_duplicate
+        ? "Attention : un élève portant le même prénom et le même nom existe déjà dans cette classe. Valider quand même cette inscription ?"
+        : action === "validate"
+          ? "Valider cette inscription élève ?"
+          : "Refuser cette inscription élève ? Le compte applicatif sera désactivé."
     );
 
     if (!confirmed) {
@@ -213,6 +221,18 @@ export default function PendingStudentRegistrations() {
                       {registration.app_users?.email ?? "non renseigné"}
                     </span>
                   </p>
+
+                  {registration.possible_duplicate && (
+                    <div className="mt-3 rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-sm text-red-100">
+                      <p className="font-semibold">
+                        Doublon probable détecté
+                      </p>
+                      <p className="mt-1 leading-6 text-red-100/80">
+                        Un élève avec le même prénom et le même nom existe déjà
+                        dans cette classe. Vérifie avant toute validation.
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -220,7 +240,11 @@ export default function PendingStudentRegistrations() {
                     type="button"
                     onClick={() => handleAction(registration.id, "validate")}
                     disabled={actionStudentId === registration.id}
-                    className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    className={
+                      registration.possible_duplicate
+                        ? "rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-400 disabled:cursor-not-allowed disabled:opacity-60"
+                        : "rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+                    }
                   >
                     Valider
                   </button>

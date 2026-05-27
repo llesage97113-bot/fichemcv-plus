@@ -23,3 +23,33 @@ export function createClient() {
 
   return browserClient;
 }
+
+export function clearSupabaseAuthStorage() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const storages = [window.localStorage, window.sessionStorage];
+
+  for (const storage of storages) {
+    const keysToRemove: string[] = [];
+
+    for (let index = 0; index < storage.length; index += 1) {
+      const key = storage.key(index);
+
+      if (
+        key &&
+        (key.startsWith("sb-") ||
+          key.includes("supabase.auth.token") ||
+          key.includes("auth-token"))
+      ) {
+        keysToRemove.push(key);
+      }
+    }
+
+    for (const key of keysToRemove) {
+      storage.removeItem(key);
+    }
+  }
+}
+

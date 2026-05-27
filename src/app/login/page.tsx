@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { clearSupabaseAuthStorage, createClient } from "@/lib/supabase/client";
 import { normalizeEmail } from "@/lib/normalizers";
 
 export default function LoginPage() {
@@ -14,6 +14,38 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+
+  useEffect(() => {
+    async function cleanExpiredLocalSession() {
+      try {
+        const { error } = await supabase.auth.getSession();
+
+        if (
+          error &&
+          error.message.toLowerCase().includes("refresh token")
+        ) {
+          clearSupabaseAuthStorage();
+          await supabase.auth.signOut({ scope: "local" }).catch(() => null);
+          setErrorMessage(
+            "Ancienne session expirée nettoyée. Tu peux te reconnecter."
+          );
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message.toLowerCase() : "";
+
+        if (message.includes("refresh token")) {
+          clearSupabaseAuthStorage();
+          await supabase.auth.signOut({ scope: "local" }).catch(() => null);
+          setErrorMessage(
+            "Ancienne session expirée nettoyée. Tu peux te reconnecter."
+          );
+        }
+      }
+    }
+
+    cleanExpiredLocalSession();
+  }, [supabase]);
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

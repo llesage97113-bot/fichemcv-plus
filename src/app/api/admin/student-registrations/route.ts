@@ -17,6 +17,14 @@ async function requireTeacher() {
   return user;
 }
 
+function normalizeStudentNameKey(value: string | null | undefined) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
 const E31_SECTIONS = [
   {
     section_key: "contexte",
@@ -300,7 +308,58 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ registrations: data ?? [] });
+  const pendingRegistrations = data ?? [];
+  const classIds = Array.from(
+    new Set(
+      pendingRegistrations
+        .map((registration) => registration.classes?.id)
+        .filter((classId): classId is string => Boolean(classId))
+    )
+  );
+
+  const { data: classStudents, error: classStudentsError } =
+    classIds.length > 0
+      ? await admin
+          .from("students")
+          .select("id, class_id, first_name, last_name, registration_status, created_at")
+          .in("class_id", classIds)
+      : { data: null, error: null };
+
+  if (classStudentsError) {
+    return NextResponse.json(
+      { error: classStudentsError.message },
+      { status: 500 }
+    );
+  }
+
+  const registrations = pendingRegistrations.map((registration) => {
+    const firstNameKey = normalizeStudentNameKey(registration.first_name);
+    const lastNameKey = normalizeStudentNameKey(registration.last_name);
+    const classId = registration.classes?.id ?? null;
+
+    const duplicate = (classStudents ?? []).find((student) => {
+      if (student.id === registration.id) {
+        return false;
+      }
+
+      return (
+        student.class_id === classId &&
+        normalizeStudentNameKey(student.first_name) === firstNameKey &&
+        normalizeStudentNameKey(student.last_name) === lastNameKey &&
+        student.registration_status !== "rejected"
+      );
+    });
+
+    return {
+      ...registration,
+      possible_duplicate: Boolean(duplicate),
+      duplicate_student_id: duplicate?.id ?? null,
+      duplicate_registration_status: duplicate?.registration_status ?? null,
+      duplicate_created_at: duplicate?.created_at ?? null,
+    };
+  });
+
+  return NextResponse.json({ registrations });
 }
 
 export async function POST(request: Request) {
@@ -327,6 +386,61 @@ export async function POST(request: Request) {
   }
 
   if (action === "validate") {
+    const { data: pendingStudent, error: pendingStudentError } = await admin
+      .from("students")
+      .select("id, first_name, last_name, class_id, registration_status")
+      .eq("id", studentId)
+      .eq("registration_status", "pending")
+      .single();
+
+    if (pendingStudentError || !pendingStudent) {
+      return NextResponse.json(
+        {
+          error:
+            pendingStudentError?.message ??
+            "Inscription en attente introuvable.",
+        },
+        { status: 500 }
+      );
+    }
+
+    const { data: existingStudents, error: existingStudentsError } = await admin
+      .from("students")
+      .select("id, first_name, last_name, registration_status")
+      .eq("class_id", pendingStudent.class_id);
+
+    if (existingStudentsError) {
+      return NextResponse.json(
+        { error: existingStudentsError.message },
+        { status: 500 }
+      );
+    }
+
+    const firstNameKey = normalizeStudentNameKey(pendingStudent.first_name);
+    const lastNameKey = normalizeStudentNameKey(pendingStudent.last_name);
+
+    const duplicateStudent = (existingStudents ?? []).find((student) => {
+      if (student.id === pendingStudent.id) {
+        return false;
+      }
+
+      return (
+        normalizeStudentNameKey(student.first_name) === firstNameKey &&
+        normalizeStudentNameKey(student.last_name) === lastNameKey &&
+        student.registration_status !== "rejected"
+      );
+    });
+
+    if (duplicateStudent) {
+      return NextResponse.json(
+        {
+          error:
+            "Validation bloquée : un élève portant le même prénom et le même nom existe déjà dans cette classe.",
+        },
+        { status: 409 }
+      );
+    }
+
     const { data, error } = await admin
       .from("students")
       .update({
