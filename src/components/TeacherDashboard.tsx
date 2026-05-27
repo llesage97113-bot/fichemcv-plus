@@ -129,6 +129,9 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [completionFilter, setCompletionFilter] = useState("all");
   const [isFicheDetailsOpen, setIsFicheDetailsOpen] = useState(false);
   const [isCockpitFiltersOpen, setIsCockpitFiltersOpen] = useState(false);
+  const [studentActivityFilter, setStudentActivityFilter] = useState<
+    "all" | "to_restart" | "active"
+  >("all");
   const [isQuickPilotOpen, setIsQuickPilotOpen] = useState(false);
   const [isTeacherActionsOpen, setIsTeacherActionsOpen] = useState(false);
   const [isWorkflowSummaryOpen, setIsWorkflowSummaryOpen] = useState(false);
@@ -497,6 +500,28 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       setResetPasswordLoadingId(null);
     }
   }
+
+  const visibleStudentSummaries = studentSummaries.filter((summary) => {
+    if (studentActivityFilter === "to_restart") {
+      return summary.startedCount === 0;
+    }
+
+    if (studentActivityFilter === "active") {
+      return summary.startedCount > 0;
+    }
+
+    return true;
+  });
+
+  const sortedStudentSummaries = [...visibleStudentSummaries].sort((a, b) => {
+    const lastNameCompare = a.lastName.localeCompare(b.lastName);
+
+    if (lastNameCompare !== 0) {
+      return lastNameCompare;
+    }
+
+    return a.firstName.localeCompare(b.firstName);
+  });
 
   return (
     <>
@@ -960,6 +985,54 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           </div>
         )}
 
+        {studentSummaries.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setStudentActivityFilter("all")}
+              className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                studentActivityFilter === "all"
+                  ? "border-sky-400 bg-sky-500/20 text-sky-100"
+                  : "border-slate-700 text-slate-300 hover:bg-slate-800"
+              }`}
+            >
+              Tous
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStudentActivityFilter("to_restart")}
+              className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                studentActivityFilter === "to_restart"
+                  ? "border-amber-400 bg-amber-500/20 text-amber-100"
+                  : "border-slate-700 text-slate-300 hover:bg-slate-800"
+              }`}
+            >
+              À relancer
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setStudentActivityFilter("active")}
+              className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
+                studentActivityFilter === "active"
+                  ? "border-emerald-400 bg-emerald-500/20 text-emerald-100"
+                  : "border-slate-700 text-slate-300 hover:bg-slate-800"
+              }`}
+            >
+              Actifs
+            </button>
+          </div>
+        )}
+
+        {studentSummaries.length > 0 && sortedStudentSummaries.length === 0 && (
+          <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+            <p className="text-sm text-slate-400">
+              Aucun élève ne correspond au filtre sélectionné.
+            </p>
+          </div>
+        )}
+
         {studentSummaries.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <p className="text-sm text-slate-400">
@@ -968,7 +1041,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           </div>
         ) : (
           <div className="grid gap-3 lg:grid-cols-2">
-            {studentSummaries.map((summary) => (
+            {sortedStudentSummaries.map((summary) => (
               <article
                 key={summary.key}
                 className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
