@@ -128,6 +128,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [statusFilter, setStatusFilter] = useState("all");
   const [completionFilter, setCompletionFilter] = useState("all");
   const [isFicheDetailsOpen, setIsFicheDetailsOpen] = useState(false);
+  const [isCockpitFiltersOpen, setIsCockpitFiltersOpen] = useState(false);
   const [isQuickPilotOpen, setIsQuickPilotOpen] = useState(false);
   const [isTeacherActionsOpen, setIsTeacherActionsOpen] = useState(false);
   const [isWorkflowSummaryOpen, setIsWorkflowSummaryOpen] = useState(false);
@@ -731,6 +732,14 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
+              onClick={() => setIsCockpitFiltersOpen((current) => !current)}
+              className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm font-medium text-sky-200 hover:bg-sky-950/40"
+            >
+              {isCockpitFiltersOpen ? "Masquer les filtres" : "Afficher les filtres"}
+            </button>
+
+            <button
+              type="button"
               onClick={() => setIsFicheDetailsOpen((current) => !current)}
               className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm font-medium text-sky-200 hover:bg-sky-950/40"
             >
@@ -747,7 +756,8 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           </div>
         </div>
 
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        {isCockpitFiltersOpen && (
+          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
           <label className="block">
             <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
               Rechercher
@@ -850,7 +860,8 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
               <option value="avancee">Avancée — 80 % et plus</option>
             </select>
           </label>
-        </div>
+          </div>
+        )}
 
         {!isFicheDetailsOpen && (
           <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
