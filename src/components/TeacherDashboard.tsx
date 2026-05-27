@@ -16,6 +16,9 @@ type FicheDashboardItem = {
   completion_score: number | null;
   quality_status: string | null;
   active_comments_count: number | null;
+  updated_at?: string | null;
+  submitted_at?: string | null;
+  validated_at?: string | null;
   latest_analysis_status?: string | null;
   latest_analysis_created_at?: string | null;
 };
@@ -90,6 +93,20 @@ function getCompletionBucket(score: number) {
   if (score >= 55) return "intermediaire";
   if (score > 0) return "fragile";
   return "vide";
+}
+
+function formatActivityDate(value: string | null) {
+  if (!value) {
+    return "aucune activité";
+  }
+
+  return new Intl.DateTimeFormat("fr-FR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(new Date(value));
 }
 
 function isTeacherActionStatus(status: string | null | undefined) {
@@ -276,6 +293,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         notStartedCount: number;
         submittedCount: number;
         finalizedCount: number;
+        latestActivityAt: string | null;
         e31Created: number;
         e31Engaged: number;
         e32Created: number;
@@ -301,6 +319,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           notStartedCount: 0,
           submittedCount: 0,
           finalizedCount: 0,
+          latestActivityAt: null,
           e31Created: 0,
           e31Engaged: 0,
           e32Created: 0,
@@ -325,6 +344,15 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
 
       if (isEngaged) {
         summary.startedCount += 1;
+
+        if (
+          fiche.updated_at &&
+          (!summary.latestActivityAt ||
+            new Date(fiche.updated_at).getTime() >
+              new Date(summary.latestActivityAt).getTime())
+        ) {
+          summary.latestActivityAt = fiche.updated_at;
+        }
       } else {
         summary.notStartedCount += 1;
       }
@@ -906,6 +934,23 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                     <p className="mt-1 text-xs text-slate-500">
                       {summary.className} · {summary.totalFiches} fiche(s) affichée(s)
                     </p>
+
+                    <div
+                      className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
+                        summary.startedCount > 0
+                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
+                          : "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                      }`}
+                    >
+                      <p className="font-semibold">
+                        Suivi terrain
+                      </p>
+                      <p className="mt-1 leading-5">
+                        {summary.startedCount > 0
+                          ? `${summary.startedCount} fiche(s) démarrée(s) · dernière activité le ${formatActivityDate(summary.latestActivityAt)}`
+                          : "À relancer : aucune fiche commencée"}
+                      </p>
+                    </div>
                   </div>
 
                   {summary.professorActions > 0 ? (

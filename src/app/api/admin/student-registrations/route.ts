@@ -25,6 +25,29 @@ function normalizeStudentNameKey(value: string | null | undefined) {
     .replace(/[\u0300-\u036f]/g, "");
 }
 
+function getRegistrationClass(registration: {
+  classes?:
+    | {
+        id?: string | null;
+        name?: string | null;
+        school_year?: string | null;
+        level?: string | null;
+      }
+    | {
+        id?: string | null;
+        name?: string | null;
+        school_year?: string | null;
+        level?: string | null;
+      }[]
+    | null;
+}) {
+  if (Array.isArray(registration.classes)) {
+    return registration.classes[0] ?? null;
+  }
+
+  return registration.classes ?? null;
+}
+
 const E31_SECTIONS = [
   {
     section_key: "contexte",
@@ -312,7 +335,7 @@ export async function GET() {
   const classIds = Array.from(
     new Set(
       pendingRegistrations
-        .map((registration) => registration.classes?.id)
+        .map((registration) => getRegistrationClass(registration)?.id)
         .filter((classId): classId is string => Boolean(classId))
     )
   );
@@ -335,7 +358,8 @@ export async function GET() {
   const registrations = pendingRegistrations.map((registration) => {
     const firstNameKey = normalizeStudentNameKey(registration.first_name);
     const lastNameKey = normalizeStudentNameKey(registration.last_name);
-    const classId = registration.classes?.id ?? null;
+    const registrationClass = getRegistrationClass(registration);
+    const classId = registrationClass?.id ?? null;
 
     const duplicate = (classStudents ?? []).find((student) => {
       if (student.id === registration.id) {
