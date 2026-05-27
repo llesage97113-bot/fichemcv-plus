@@ -924,6 +924,42 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
           </div>
         )}
 
+        {studentSummaries.length > 0 && (
+          <div className="mb-4 grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+                Élèves à relancer
+              </p>
+              <p className="mt-2 text-3xl font-bold text-amber-100">
+                {
+                  studentSummaries.filter(
+                    (summary) => summary.startedCount === 0
+                  ).length
+                }
+              </p>
+              <p className="mt-1 text-sm text-amber-100/70">
+                Aucun travail commencé sur les fiches affichées.
+              </p>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200">
+                Élèves actifs
+              </p>
+              <p className="mt-2 text-3xl font-bold text-emerald-100">
+                {
+                  studentSummaries.filter(
+                    (summary) => summary.startedCount > 0
+                  ).length
+                }
+              </p>
+              <p className="mt-1 text-sm text-emerald-100/70">
+                Au moins une fiche démarrée.
+              </p>
+            </div>
+          </div>
+        )}
+
         {studentSummaries.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
             <p className="text-sm text-slate-400">
