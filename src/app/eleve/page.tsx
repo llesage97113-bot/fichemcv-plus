@@ -224,12 +224,12 @@ export default async function StudentDashboardPage({
               </Link>
 
               {isTeacherPreview && (
-                <Link
+                <a
                   href="/"
                   className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100"
                 >
                   Retour espace professeur
-                </Link>
+                </a>
               )}
             </div>
           </div>

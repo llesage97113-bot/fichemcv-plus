@@ -55,6 +55,11 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
     };
   }, [supabase]);
 
+  function navigateTo(path: string) {
+    router.push(path);
+    router.refresh();
+  }
+
   async function handleLogout() {
     await supabase.auth.signOut();
     setIsAuthenticated(false);
@@ -80,8 +85,9 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
         <div className="flex flex-wrap gap-3">
           {!isCheckingSession && isAuthenticated && role === "professeur" && (
             <>
-              <Link
-                href="/"
+              <button
+                type="button"
+                onClick={() => navigateTo("/")}
                 className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                   isTeacherSpace
                     ? "bg-sky-500 text-white hover:bg-sky-400"
@@ -89,10 +95,11 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
                 }`}
               >
                 Espace professeur
-              </Link>
+              </button>
 
-              <Link
-                href="/eleve"
+              <button
+                type="button"
+                onClick={() => navigateTo("/eleve")}
                 className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                   isStudentSpace
                     ? "bg-sky-500 text-white hover:bg-sky-400"
@@ -100,7 +107,7 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
                 }`}
               >
                 Prévisualiser espace élève
-              </Link>
+              </button>
             </>
           )}
 
