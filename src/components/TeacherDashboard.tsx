@@ -1136,6 +1136,12 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
                           ? `${summary.startedCount} fiche(s) démarrée(s) · dernière activité le ${formatActivityDate(summary.latestActivityAt)}`
                           : "À relancer : aucune fiche commencée"}
                       </p>
+
+                      {summary.startedCount === 0 && (
+                        <p className="mt-2 rounded-lg border border-amber-400/30 bg-slate-950/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-amber-100">
+                          Message visible dans l’espace élève
+                        </p>
+                      )}
                     </div>
                   </div>
 
