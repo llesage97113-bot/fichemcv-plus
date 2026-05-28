@@ -188,6 +188,17 @@ export default async function StudentDashboardPage({
     ? `${student.first_name} ${student.last_name}`
     : "Élève non rattaché";
 
+  const fiches = data ?? [];
+  const hasFiches = fiches.length > 0;
+  const hasStartedAtLeastOneFiche = fiches.some(
+    (fiche) => Number(fiche.completion_score ?? 0) > 0
+  );
+  const shouldShowStartReminder =
+    Boolean(student) &&
+    student?.registration_status !== "pending" &&
+    hasFiches &&
+    !hasStartedAtLeastOneFiche;
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
       <AppNavigation maxWidth="5xl" />
@@ -439,6 +450,37 @@ export default async function StudentDashboardPage({
           </div>
         </section>
 
+        {shouldShowStartReminder && (
+          <section className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5 shadow-sm">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-amber-200">
+                  Démarrage attendu
+                </p>
+
+                <h2 className="mt-2 text-xl font-bold text-amber-100">
+                  Tu n’as encore commencé aucune fiche
+                </h2>
+
+                <p className="mt-3 text-sm leading-6 text-amber-100/80">
+                  Ouvre une première fiche et complète au minimum le contexte,
+                  l’entreprise, la situation observée ou vécue, ainsi que les acteurs
+                  concernés.
+                </p>
+
+                <p className="mt-3 text-sm leading-6 text-amber-100/70">
+                  Tu n’as pas besoin de tout terminer immédiatement : l’objectif est
+                  d’amorcer ton travail pour pouvoir ensuite l’améliorer.
+                </p>
+              </div>
+
+              <span className="inline-flex rounded-full border border-amber-500/40 bg-slate-950/40 px-3 py-1 text-xs font-semibold text-amber-100">
+                À faire maintenant
+              </span>
+            </div>
+          </section>
+        )}
+
         {error && (
           <div className="mb-6 rounded-lg border border-red-500 bg-red-950/40 p-4">
             <p className="font-semibold text-red-300">Erreur Supabase</p>
@@ -455,7 +497,7 @@ export default async function StudentDashboardPage({
           </div>
         )}
 
-        {!error && data && data.length > 0 && (
+        {!error && hasFiches && (
           <>
             <section className="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4">
@@ -463,7 +505,7 @@ export default async function StudentDashboardPage({
                   Total
                 </p>
                 <p className="mt-1 text-2xl font-bold text-slate-100">
-                  {data.length}
+                  {fiches.length}
                 </p>
               </div>
 
@@ -473,7 +515,7 @@ export default async function StudentDashboardPage({
                 </p>
                 <p className="mt-1 text-2xl font-bold text-amber-300">
                   {
-                    data.filter(
+                    fiches.filter(
                       (fiche) =>
                         fiche.status === "non_commencee" ||
                         fiche.status === "brouillon"
@@ -487,7 +529,7 @@ export default async function StudentDashboardPage({
                   À corriger
                 </p>
                 <p className="mt-1 text-2xl font-bold text-orange-300">
-                  {data.filter((fiche) => fiche.status === "a_corriger").length}
+                  {fiches.filter((fiche) => fiche.status === "a_corriger").length}
                 </p>
               </div>
 
@@ -496,7 +538,7 @@ export default async function StudentDashboardPage({
                   Validées
                 </p>
                 <p className="mt-1 text-2xl font-bold text-green-300">
-                  {data.filter((fiche) => fiche.status === "validee").length}
+                  {fiches.filter((fiche) => fiche.status === "validee").length}
                 </p>
               </div>
 
@@ -505,13 +547,13 @@ export default async function StudentDashboardPage({
                   Archivées
                 </p>
                 <p className="mt-1 text-2xl font-bold text-indigo-300">
-                  {data.filter((fiche) => fiche.status === "archivee").length}
+                  {fiches.filter((fiche) => fiche.status === "archivee").length}
                 </p>
               </div>
             </section>
 
             <div className="grid gap-4">
-              {data.map((fiche) => {
+              {fiches.map((fiche) => {
                 const score = Number(fiche.completion_score ?? 0);
                 const progress = getProgressClasses(score);
 

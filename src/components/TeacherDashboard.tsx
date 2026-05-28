@@ -132,6 +132,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [studentActivityFilter, setStudentActivityFilter] = useState<
     "all" | "to_restart" | "active"
   >("all");
+  const [isReminderMessageCopied, setIsReminderMessageCopied] = useState(false);
   const [isQuickPilotOpen, setIsQuickPilotOpen] = useState(false);
   const [isTeacherActionsOpen, setIsTeacherActionsOpen] = useState(false);
   const [isWorkflowSummaryOpen, setIsWorkflowSummaryOpen] = useState(false);
@@ -452,6 +453,28 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     setCompletionFilter("all");
     setIsFicheDetailsOpen(true);
     scrollToFicheResults();
+  }
+
+  async function copyReminderMessage() {
+    const message = `Bonjour,
+
+Tu as bien accès à FicheMCV+, mais aucune fiche n’a encore été commencée.
+
+Connecte-toi à ton espace élève, ouvre une première fiche et complète au minimum le contexte, l’entreprise, la situation observée et les acteurs concernés.
+
+Lien de connexion : https://fichemcv-plus.vercel.app/login`;
+
+    try {
+      await navigator.clipboard.writeText(message);
+      setIsReminderMessageCopied(true);
+
+      window.setTimeout(() => {
+        setIsReminderMessageCopied(false);
+      }, 2500);
+    } catch {
+      setIsReminderMessageCopied(false);
+      window.alert("Copie impossible. Sélectionne le texte manuellement.");
+    }
   }
 
   async function resetStudentPassword(studentId: string, studentName: string) {
@@ -980,6 +1003,49 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
               </p>
               <p className="mt-1 text-sm text-emerald-100/70">
                 Au moins une fiche démarrée.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {studentSummaries.some((summary) => summary.startedCount === 0) && (
+          <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+                  Message de relance rapide
+                </p>
+                <p className="mt-2 text-sm leading-6 text-amber-100/80">
+                  Un message prêt à copier pour les élèves qui ont créé leur compte
+                  mais n’ont encore commencé aucune fiche.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={copyReminderMessage}
+                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                  isReminderMessageCopied
+                    ? "bg-emerald-500 text-white"
+                    : "bg-amber-500 text-slate-950 hover:bg-amber-400"
+                }`}
+              >
+                {isReminderMessageCopied ? "Message copié" : "Copier le message"}
+              </button>
+            </div>
+
+            <div className="mt-4 rounded-xl border border-amber-500/30 bg-slate-950/50 p-4 text-sm leading-6 text-slate-200">
+              <p>Bonjour,</p>
+              <p className="mt-2">
+                Tu as bien accès à FicheMCV+, mais aucune fiche n’a encore été commencée.
+              </p>
+              <p className="mt-2">
+                Connecte-toi à ton espace élève, ouvre une première fiche et complète
+                au minimum le contexte, l’entreprise, la situation observée et les
+                acteurs concernés.
+              </p>
+              <p className="mt-2">
+                Lien de connexion : https://fichemcv-plus.vercel.app/login
               </p>
             </div>
           </div>
