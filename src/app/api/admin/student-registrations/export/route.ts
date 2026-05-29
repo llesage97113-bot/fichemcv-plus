@@ -75,6 +75,7 @@ export async function GET() {
         is_active
       )
     `)
+    .neq("registration_status", "rejected")
     .order("last_name", { ascending: true })
     .order("first_name", { ascending: true });
 
