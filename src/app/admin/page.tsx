@@ -1,5 +1,6 @@
 import AppNavigation from "@/components/AppNavigation";
 import AdminTeacherCreator from "@/components/AdminTeacherCreator";
+import AdminTeacherPasswordResetter from "@/components/AdminTeacherPasswordResetter";
 import { requireRole } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -119,8 +120,9 @@ export default async function AdminPage() {
           </div>
         </section>
 
-        <section className="mb-6">
+        <section className="mb-6 grid gap-4 lg:grid-cols-2">
           <AdminTeacherCreator />
+          <AdminTeacherPasswordResetter />
         </section>
 
         <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
