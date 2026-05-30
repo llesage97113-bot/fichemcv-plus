@@ -1,6 +1,7 @@
 import AppNavigation from "@/components/AppNavigation";
 import AdminTeacherCreator from "@/components/AdminTeacherCreator";
 import AdminTeacherPasswordResetter from "@/components/AdminTeacherPasswordResetter";
+import AdminTeacherActiveToggle from "@/components/AdminTeacherActiveToggle";
 import { requireRole } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -145,6 +146,7 @@ export default async function AdminPage() {
                   <tr>
                     <th className="px-4 py-3">Email</th>
                     <th className="px-4 py-3">Statut</th>
+                    <th className="px-4 py-3">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-800">
@@ -163,6 +165,13 @@ export default async function AdminPage() {
                         >
                           {teacher.is_active ? "Actif" : "Inactif"}
                         </span>
+                      </td>
+                      <td className="px-4 py-3">
+                        <AdminTeacherActiveToggle
+                          teacherId={teacher.id}
+                          teacherEmail={teacher.email ?? ""}
+                          isActive={Boolean(teacher.is_active)}
+                        />
                       </td>
                     </tr>
                   ))}
