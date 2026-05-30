@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { clearSupabaseAuthStorage, createClient } from "@/lib/supabase/client";
 
-type UserRole = "professeur" | "eleve" | null;
+type UserRole = "admin" | "professeur" | "eleve" | null;
 
 type AppNavigationProps = {
   maxWidth?: "4xl" | "5xl" | "6xl";
@@ -22,6 +22,7 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
 
+  const isAdminSpace = pathname.startsWith("/admin");
   const isTeacherSpace = pathname === "/";
   const isStudentSpace = pathname.startsWith("/eleve");
 
@@ -110,8 +111,22 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {!isCheckingSession && isAuthenticated && role === "professeur" && (
+          {!isCheckingSession && isAuthenticated && (role === "professeur" || role === "admin") && (
             <>
+              {role === "admin" && (
+                <button
+                  type="button"
+                  onClick={() => navigateTo("/admin")}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                    isAdminSpace
+                      ? "bg-purple-500 text-white hover:bg-purple-400"
+                      : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
+                  }`}
+                >
+                  Administration
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={() => navigateTo("/")}
