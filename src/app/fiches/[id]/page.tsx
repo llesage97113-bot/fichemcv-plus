@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabaseClient";
 import SectionEditor from "@/components/SectionEditor";
 import TeacherWorkflowActions from "@/components/TeacherWorkflowActions";
 import GenerateEvaluationButton from "@/components/GenerateEvaluationButton";
+import TeacherSectionFeedbackEditor from "@/components/TeacherSectionFeedbackEditor";
 import AppNavigation from "@/components/AppNavigation";
 import { requireRole } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -235,11 +236,17 @@ export default async function FicheDetailPage({
         {!sectionsError && sections && sections.length > 0 && (
           <div className="space-y-4">
             {sections.map((section) => (
-              <SectionEditor
-                key={section.id}
-                section={section}
-                isReadOnly={isReadOnly}
-              />
+              <div key={section.id} className="space-y-3">
+                <SectionEditor
+                  section={section}
+                  isReadOnly={isReadOnly}
+                />
+
+                <TeacherSectionFeedbackEditor
+                  sectionId={section.id}
+                  initialFeedback={section.teacher_feedback ?? null}
+                />
+              </div>
             ))}
           </div>
         )}

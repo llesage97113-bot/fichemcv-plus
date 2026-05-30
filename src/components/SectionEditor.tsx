@@ -13,6 +13,7 @@ type SectionEditorProps = {
     student_question?: string | null;
     help_text?: string | null;
     content: string | null;
+    teacher_feedback?: string | null;
     completion_status: string;
     character_count: number;
     is_core?: boolean | null;
@@ -237,6 +238,22 @@ export default function SectionEditor({
           {section.help_text && (
             <p className="text-sm leading-6 text-slate-400">
               {section.help_text}
+            </p>
+          )}
+        </div>
+      )}
+
+      {section.teacher_feedback && section.teacher_feedback.trim().length > 0 && (
+        <div className="mb-4 rounded-xl border border-red-500/50 bg-red-500/10 p-4 text-red-100">
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-200">
+            Remarque professeur
+          </p>
+          <p className="text-sm leading-6 whitespace-pre-wrap">
+            {section.teacher_feedback}
+          </p>
+          {!isReadOnly && (
+            <p className="mt-3 text-xs font-medium text-red-200">
+              À prendre en compte avant de resoumettre ta fiche.
             </p>
           )}
         </div>
