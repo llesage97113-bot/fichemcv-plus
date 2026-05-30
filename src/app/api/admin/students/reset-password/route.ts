@@ -10,7 +10,7 @@ async function requireTeacher() {
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !user || user.app_metadata?.role !== "professeur") {
+  if (error || !user || !["professeur", "admin"].includes(user.app_metadata?.role)) {
     return null;
   }
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
 
   if (!teacher) {
     return NextResponse.json(
-      { error: "Accès réservé au professeur." },
+      { error: "Accès réservé au professeur ou à l’administrateur." },
       { status: 403 }
     );
   }

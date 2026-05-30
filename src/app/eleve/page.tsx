@@ -111,7 +111,7 @@ export default async function StudentDashboardPage({
   const authUser = await requireAnyRole(["professeur", "eleve"]);
   const supabase = await createClient();
   const authRole = authUser.app_metadata?.role;
-  const isTeacherPreview = authRole === "professeur";
+  const isTeacherPreview = authRole === "professeur" || authRole === "admin";
 
   let student = null;
   let studentErrorMessage = "";
