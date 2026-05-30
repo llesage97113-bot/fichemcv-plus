@@ -1,4 +1,5 @@
 import AppNavigation from "@/components/AppNavigation";
+import AdminTeacherCreator from "@/components/AdminTeacherCreator";
 import { requireRole } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -110,6 +111,10 @@ export default async function AdminPage() {
               En attente de validation
             </p>
           </div>
+        </section>
+
+        <section className="mb-6">
+          <AdminTeacherCreator />
         </section>
 
         <section className="grid gap-4 lg:grid-cols-3">
