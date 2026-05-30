@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { clearSupabaseAuthStorage, createClient } from "@/lib/supabase/client";
 
 type UserRole = "professeur" | "eleve" | null;
 
@@ -31,13 +31,40 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
 
   useEffect(() => {
     async function checkSession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
-      setIsAuthenticated(Boolean(session));
-      setRole((session?.user?.app_metadata?.role as UserRole) ?? null);
-      setIsCheckingSession(false);
+        if (
+          error &&
+          error.message.toLowerCase().includes("refresh token")
+        ) {
+          clearSupabaseAuthStorage();
+          await supabase.auth.signOut({ scope: "local" }).catch(() => null);
+          setIsAuthenticated(false);
+          setRole(null);
+          setIsCheckingSession(false);
+          return;
+        }
+
+        setIsAuthenticated(Boolean(session));
+        setRole((session?.user?.app_metadata?.role as UserRole) ?? null);
+        setIsCheckingSession(false);
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message.toLowerCase() : "";
+
+        if (message.includes("refresh token")) {
+          clearSupabaseAuthStorage();
+          await supabase.auth.signOut({ scope: "local" }).catch(() => null);
+        }
+
+        setIsAuthenticated(false);
+        setRole(null);
+        setIsCheckingSession(false);
+      }
     }
 
     checkSession();

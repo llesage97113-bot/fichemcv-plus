@@ -509,10 +509,20 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
 
       const generatedTemporaryPassword = payload.temporaryPassword;
 
+      if (!generatedTemporaryPassword) {
+        throw new Error("Le mot de passe temporaire n’a pas été renvoyé par le serveur.");
+      }
+
       setTemporaryPassword(generatedTemporaryPassword);
       setResetPasswordMessage(
         `Mot de passe temporaire généré pour ${studentName}. Copie-le maintenant et transmets-le à l’élève.`
       );
+
+      window.setTimeout(() => {
+        document
+          .getElementById("reset-password-result")
+          ?.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 100);
     } catch (error) {
       setResetPasswordError(
         error instanceof Error
@@ -933,6 +943,7 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
 
         {(resetPasswordMessage || resetPasswordError) && (
           <div
+            id="reset-password-result"
             className={`mb-4 rounded-xl border p-4 text-sm ${
               resetPasswordError
                 ? "border-red-500/40 bg-red-500/10 text-red-200"
