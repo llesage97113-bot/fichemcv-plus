@@ -19,6 +19,12 @@ export default async function AdminPage() {
     .eq("role", "teacher")
     .eq("is_active", true);
 
+  const { data: teachers } = await admin
+    .from("app_users")
+    .select("id, email, is_active")
+    .eq("role", "teacher")
+    .order("email", { ascending: true });
+
   const { count: classesCount } = await admin
     .from("classes")
     .select("id", { count: "exact", head: true });
@@ -115,6 +121,59 @@ export default async function AdminPage() {
 
         <section className="mb-6">
           <AdminTeacherCreator />
+        </section>
+
+        <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="mb-4">
+            <p className="text-sm font-semibold uppercase tracking-wide text-purple-300">
+              Professeurs
+            </p>
+            <h2 className="mt-1 text-xl font-bold text-slate-100">
+              Professeurs existants
+            </h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              Liste des comptes professeurs actuellement déclarés dans FicheMCV+.
+            </p>
+          </div>
+
+          {teachers && teachers.length > 0 ? (
+            <div className="overflow-hidden rounded-xl border border-slate-800">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-950/80 text-xs uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Email</th>
+                    <th className="px-4 py-3">Statut</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800">
+                  {teachers.map((teacher) => (
+                    <tr key={teacher.id} className="bg-slate-900/40">
+                      <td className="px-4 py-3 font-mono text-slate-200">
+                        {teacher.email}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span
+                          className={`inline-flex rounded-full px-3 py-1 text-xs font-semibold ${
+                            teacher.is_active
+                              ? "bg-emerald-500/15 text-emerald-200"
+                              : "bg-red-500/15 text-red-200"
+                          }`}
+                        >
+                          {teacher.is_active ? "Actif" : "Inactif"}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+              <p className="text-sm text-slate-400">
+                Aucun professeur déclaré pour le moment.
+              </p>
+            </div>
+          )}
         </section>
 
         <section className="grid gap-4 lg:grid-cols-3">
