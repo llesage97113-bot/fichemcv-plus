@@ -30,11 +30,13 @@ export default function PendingStudentRegistrations() {
   const [isLoading, setIsLoading] = useState(true);
   const [actionStudentId, setActionStudentId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const [validatedStudentName, setValidatedStudentName] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
 
   async function loadRegistrations() {
     setIsLoading(true);
     setMessage(null);
+    setValidatedStudentName(null);
     setIsError(false);
 
     try {
@@ -105,6 +107,7 @@ export default function PendingStudentRegistrations() {
 
     setActionStudentId(studentId);
     setMessage(null);
+    setValidatedStudentName(null);
     setIsError(false);
 
     try {
@@ -122,7 +125,21 @@ export default function PendingStudentRegistrations() {
         throw new Error(payload.error ?? "Action impossible.");
       }
 
-      setMessage(payload.message ?? "Action effectuée.");
+      if (action === "validate") {
+        const studentName = `${registration?.first_name ?? ""} ${
+          registration?.last_name ?? ""
+        }`.trim();
+
+        setValidatedStudentName(studentName || "Élève validé");
+        setMessage(
+          payload.message ??
+            "Inscription validée. Les 3 fiches E31 et les 4 fiches E32 ont été générées."
+        );
+      } else {
+        setValidatedStudentName(null);
+        setMessage(payload.message ?? "Inscription refusée.");
+      }
+
       setIsError(false);
       await loadRegistrations();
     } catch (error) {
@@ -265,13 +282,28 @@ export default function PendingStudentRegistrations() {
       )}
 
       {message && (
-        <p
-          className={`mt-3 text-sm ${
-            isError ? "text-red-300" : "text-emerald-300"
+        <div
+          className={`mt-4 rounded-2xl border p-4 text-sm ${
+            isError
+              ? "border-red-500/40 bg-red-500/10 text-red-100"
+              : "border-emerald-500/40 bg-emerald-500/10 text-emerald-100"
           }`}
         >
-          {message}
-        </p>
+          {!isError && validatedStudentName && (
+            <p className="mb-2 font-semibold text-emerald-200">
+              Inscription validée pour {validatedStudentName}
+            </p>
+          )}
+
+          <p className="leading-6">{message}</p>
+
+          {!isError && validatedStudentName && (
+            <p className="mt-2 text-xs leading-5 text-emerald-200/90">
+              L’élève peut maintenant accéder à son espace. Les fiches générées
+              apparaissent en brouillon dans son tableau de bord.
+            </p>
+          )}
+        </div>
       )}
     </section>
   );
