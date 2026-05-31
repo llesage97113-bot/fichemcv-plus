@@ -17,6 +17,7 @@ export default function ClassRegistrationManager() {
   const [editingClassId, setEditingClassId] = useState<string | null>(null);
   const [editedCode, setEditedCode] = useState("");
   const [editedOpen, setEditedOpen] = useState(true);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const [newName, setNewName] = useState("");
   const [newSchoolYear, setNewSchoolYear] = useState("2025-2026");
@@ -25,6 +26,51 @@ export default function ClassRegistrationManager() {
 
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+
+  function buildRegistrationCode(className: string, schoolYear: string) {
+    const normalizedClass = className
+      .trim()
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^A-Z0-9]/g, "");
+
+    const yearSuffix =
+      schoolYear.match(/20\d{2}$/)?.[0]?.slice(-2) ??
+      schoolYear.match(/20\d{2}/)?.[0]?.slice(-2) ??
+      "26";
+
+    const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    const randomSuffix = Array.from({ length: 4 }, () =>
+      alphabet[Math.floor(Math.random() * alphabet.length)]
+    ).join("");
+
+    return `${normalizedClass || "MCV"}${yearSuffix}-${randomSuffix}`;
+  }
+
+  function generateNewCode() {
+    setNewCode(buildRegistrationCode(newName, newSchoolYear));
+  }
+
+  async function copyCode(code: string | null) {
+    if (!code) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopiedCode(code);
+      setMessage(`Code copié : ${code}`);
+      setIsError(false);
+
+      window.setTimeout(() => {
+        setCopiedCode((currentCode) => (currentCode === code ? null : currentCode));
+      }, 2500);
+    } catch {
+      setMessage("Copie impossible depuis ce navigateur.");
+      setIsError(true);
+    }
+  }
 
   async function loadClasses() {
     setIsLoading(true);
@@ -190,6 +236,22 @@ export default function ClassRegistrationManager() {
                         Code : {classItem.registration_code || "non défini"}
                       </span>
 
+                      {classItem.registration_code && (
+                        <button
+                          type="button"
+                          onClick={() => copyCode(classItem.registration_code)}
+                          className={`rounded-full border px-3 py-1 transition ${
+                            copiedCode === classItem.registration_code
+                              ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-200"
+                              : "border-slate-600 bg-slate-900/80 text-slate-200 hover:bg-slate-800"
+                          }`}
+                        >
+                          {copiedCode === classItem.registration_code
+                            ? "Code copié ✓"
+                            : "Copier le code"}
+                        </button>
+                      )}
+
                       <span
                         className={`rounded-full border px-3 py-1 ${
                           classItem.is_registration_open
@@ -277,13 +339,23 @@ export default function ClassRegistrationManager() {
             className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
           />
 
-          <input
-            required
-            value={newCode}
-            onChange={(event) => setNewCode(event.target.value)}
-            placeholder="TMCVA-2026"
-            className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
-          />
+          <div className="flex gap-2">
+            <input
+              required
+              value={newCode}
+              onChange={(event) => setNewCode(event.target.value)}
+              placeholder="TMCVA26-8K3P"
+              className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
+            />
+
+            <button
+              type="button"
+              onClick={generateNewCode}
+              className="rounded-xl border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-200 transition hover:bg-sky-950/40"
+            >
+              Générer
+            </button>
+          </div>
         </div>
 
         <button
