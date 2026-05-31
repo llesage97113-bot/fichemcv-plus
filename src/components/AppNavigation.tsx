@@ -17,6 +17,29 @@ const maxWidthClasses = {
   "6xl": "max-w-6xl",
 };
 
+function getRoleLabel(currentRole: UserRole) {
+  if (currentRole === "admin") return "Administrateur";
+  if (currentRole === "professeur") return "Professeur";
+  if (currentRole === "eleve") return "Élève";
+  return "Non connecté";
+}
+
+function getRoleBadgeClasses(currentRole: UserRole) {
+  if (currentRole === "admin") {
+    return "border-purple-400/50 bg-purple-500/10 text-purple-200";
+  }
+
+  if (currentRole === "professeur") {
+    return "border-sky-400/50 bg-sky-500/10 text-sky-200";
+  }
+
+  if (currentRole === "eleve") {
+    return "border-emerald-400/50 bg-emerald-500/10 text-emerald-200";
+  }
+
+  return "border-slate-700 bg-slate-950/50 text-slate-300";
+}
+
 export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -28,7 +51,11 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [role, setRole] = useState<UserRole>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(true);
+
+  const isAdminPreviewingTeacherSpace = role === "admin" && isTeacherSpace;
+  const isAdminPreviewingStudentSpace = role === "admin" && isStudentSpace;
 
   useEffect(() => {
     async function checkSession() {
@@ -38,20 +65,19 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
           error,
         } = await supabase.auth.getSession();
 
-        if (
-          error &&
-          error.message.toLowerCase().includes("refresh token")
-        ) {
+        if (error && error.message.toLowerCase().includes("refresh token")) {
           clearSupabaseAuthStorage();
           await supabase.auth.signOut({ scope: "local" }).catch(() => null);
           setIsAuthenticated(false);
           setRole(null);
+          setUserEmail(null);
           setIsCheckingSession(false);
           return;
         }
 
         setIsAuthenticated(Boolean(session));
         setRole((session?.user?.app_metadata?.role as UserRole) ?? null);
+        setUserEmail(session?.user?.email ?? null);
         setIsCheckingSession(false);
       } catch (error) {
         const message =
@@ -64,6 +90,7 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
 
         setIsAuthenticated(false);
         setRole(null);
+        setUserEmail(null);
         setIsCheckingSession(false);
       }
     }
@@ -75,6 +102,7 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setIsAuthenticated(Boolean(session));
       setRole((session?.user?.app_metadata?.role as UserRole) ?? null);
+      setUserEmail(session?.user?.email ?? null);
       setIsCheckingSession(false);
     });
 
@@ -92,6 +120,7 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
     await supabase.auth.signOut();
     setIsAuthenticated(false);
     setRole(null);
+    setUserEmail(null);
     router.push("/login");
     router.refresh();
   }
@@ -101,57 +130,76 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
       className={`mx-auto mb-6 w-full ${maxWidthClasses[maxWidth]} rounded-2xl border border-slate-700 bg-slate-900/80 px-5 py-4 shadow-sm`}
     >
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-        <div>
-          <p className="text-sm uppercase tracking-wide text-sky-400">
-            FicheMCV+
-          </p>
-          <h1 className="text-xl font-semibold text-white">
-            Suivi des fiches MCV
-          </h1>
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm uppercase tracking-wide text-sky-400">
+              FicheMCV+
+            </p>
+            <h1 className="text-xl font-semibold text-white">
+              Suivi des fiches MCV
+            </h1>
+          </div>
+
+          {!isCheckingSession && isAuthenticated && (
+            <div
+              className={`inline-flex flex-col rounded-xl border px-3 py-2 text-xs sm:flex-row sm:items-center sm:gap-2 ${getRoleBadgeClasses(
+                role
+              )}`}
+            >
+              <span className="font-semibold">
+                Connecté en : {getRoleLabel(role)}
+              </span>
+              {userEmail && (
+                <span className="font-mono opacity-80">{userEmail}</span>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="flex flex-wrap gap-3">
-          {!isCheckingSession && isAuthenticated && (role === "professeur" || role === "admin") && (
-            <>
-              {role === "admin" && (
+          {!isCheckingSession &&
+            isAuthenticated &&
+            (role === "professeur" || role === "admin") && (
+              <>
+                {role === "admin" && (
+                  <button
+                    type="button"
+                    onClick={() => navigateTo("/admin")}
+                    className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                      isAdminSpace
+                        ? "bg-purple-500 text-white hover:bg-purple-400"
+                        : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
+                    }`}
+                  >
+                    Administration
+                  </button>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => navigateTo("/admin")}
+                  onClick={() => navigateTo("/")}
                   className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                    isAdminSpace
-                      ? "bg-purple-500 text-white hover:bg-purple-400"
+                    isTeacherSpace
+                      ? "border border-sky-300 bg-sky-500 text-white shadow shadow-sky-500/20 hover:bg-sky-400"
                       : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
                   }`}
                 >
-                  Administration
+                  Espace professeur
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={() => navigateTo("/")}
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                  isTeacherSpace
-                    ? "border border-sky-300 bg-sky-500 text-white shadow shadow-sky-500/20 hover:bg-sky-400"
-                    : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
-                }`}
-              >
-                Espace professeur
-              </button>
-
-              <button
-                type="button"
-                onClick={() => navigateTo("/eleve")}
-                className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                  isStudentSpace
-                    ? "border border-emerald-300 bg-emerald-500 text-white shadow shadow-emerald-500/20 hover:bg-emerald-400"
-                    : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
-                }`}
-              >
-                Prévisualiser espace élève
-              </button>
-            </>
-          )}
+                <button
+                  type="button"
+                  onClick={() => navigateTo("/eleve")}
+                  className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                    isStudentSpace
+                      ? "border border-emerald-300 bg-emerald-500 text-white shadow shadow-emerald-500/20 hover:bg-emerald-400"
+                      : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
+                  }`}
+                >
+                  Prévisualiser espace élève
+                </button>
+              </>
+            )}
 
           {!isCheckingSession && isAuthenticated && role === "eleve" && (
             <Link
@@ -182,6 +230,20 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
           )}
         </div>
       </div>
+
+      {!isCheckingSession && isAuthenticated && isAdminPreviewingTeacherSpace && (
+        <div className="mt-4 rounded-xl border border-purple-400/40 bg-purple-500/10 p-3 text-sm text-purple-100">
+          <span className="font-semibold">Mode administrateur :</span>{" "}
+          vous consultez l’espace professeur. Certaines actions pédagogiques peuvent être réservées à un compte professeur.
+        </div>
+      )}
+
+      {!isCheckingSession && isAuthenticated && isAdminPreviewingStudentSpace && (
+        <div className="mt-4 rounded-xl border border-emerald-400/40 bg-emerald-500/10 p-3 text-sm text-emerald-100">
+          <span className="font-semibold">Mode administrateur :</span>{" "}
+          vous consultez une prévisualisation de l’espace élève.
+        </div>
+      )}
     </nav>
   );
 }
