@@ -112,16 +112,8 @@ export default function GenerateEvaluationButton({
   }, [ficheId]);
 
   async function generateEvaluation() {
-    const confirmed = window.confirm(
-      "Générer une analyse pédagogique provisoire pour cette fiche ?"
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
+    setMessage("Clic détecté : lancement de l’analyse...");
     setIsLoading(true);
-    setMessage("");
     setErrorMessage("");
 
     try {

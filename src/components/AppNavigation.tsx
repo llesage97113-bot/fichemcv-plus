@@ -23,7 +23,7 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
   const supabase = useMemo(() => createClient(), []);
 
   const isAdminSpace = pathname.startsWith("/admin");
-  const isTeacherSpace = pathname === "/";
+  const isTeacherSpace = pathname === "/" || pathname.startsWith("/fiches");
   const isStudentSpace = pathname.startsWith("/eleve");
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -132,7 +132,7 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
                 onClick={() => navigateTo("/")}
                 className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                   isTeacherSpace
-                    ? "bg-sky-500 text-white hover:bg-sky-400"
+                    ? "border border-sky-300 bg-sky-500 text-white shadow shadow-sky-500/20 hover:bg-sky-400"
                     : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
                 }`}
               >
@@ -144,7 +144,7 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
                 onClick={() => navigateTo("/eleve")}
                 className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
                   isStudentSpace
-                    ? "bg-sky-500 text-white hover:bg-sky-400"
+                    ? "border border-emerald-300 bg-emerald-500 text-white shadow shadow-emerald-500/20 hover:bg-emerald-400"
                     : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
                 }`}
               >
