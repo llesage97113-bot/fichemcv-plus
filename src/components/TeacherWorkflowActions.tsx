@@ -42,6 +42,7 @@ export default function TeacherWorkflowActions({
 
   const canRequestCorrection = status === "soumise";
   const canMarkCorrected = status === "a_corriger";
+  const canReopenForCorrection = status === "corrigee";
   const canValidate = status === "corrigee";
   const canLock = status === "validee";
   const canArchive = status === "verrouillee";
@@ -50,6 +51,7 @@ export default function TeacherWorkflowActions({
     rpcName:
       | "request_fiche_correction"
       | "mark_fiche_corrected"
+      | "reopen_fiche_for_correction"
       | "validate_fiche"
       | "lock_fiche"
       | "archive_fiche",
@@ -109,16 +111,48 @@ export default function TeacherWorkflowActions({
         {canMarkCorrected && (
           <button
             type="button"
-            onClick={() =>
+            onClick={() => {
+              const confirmed = window.confirm(
+                "Confirmez-vous que la correction professeur est terminée ?\n\nLa fiche passera au statut « Corrigée ». L’élève ne pourra plus la modifier, sauf si vous la rouvrez ensuite en correction."
+              );
+
+              if (!confirmed) {
+                return;
+              }
+
               runWorkflowAction(
                 "mark_fiche_corrected",
                 "La fiche a été marquée comme corrigée."
-              )
-            }
+              );
+            }}
             disabled={isLoading}
             className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
             {isLoading ? "Traitement en cours..." : "Marquer comme corrigée"}
+          </button>
+        )}
+
+        {canReopenForCorrection && (
+          <button
+            type="button"
+            onClick={() => {
+              const confirmed = window.confirm(
+                "Réouvrir cette fiche en correction ?\n\nL’élève pourra de nouveau modifier sa fiche et la resoumettre."
+              );
+
+              if (!confirmed) {
+                return;
+              }
+
+              runWorkflowAction(
+                "reopen_fiche_for_correction",
+                "La fiche a été rouverte en correction."
+              );
+            }}
+            disabled={isLoading}
+            className="inline-flex w-full items-center justify-center rounded-lg border border-amber-400/50 bg-amber-500/10 px-4 py-2 text-sm font-semibold text-amber-200 transition hover:bg-amber-500/20 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+          >
+            {isLoading ? "Réouverture en cours..." : "Réouvrir en correction"}
           </button>
         )}
 
@@ -163,6 +197,7 @@ export default function TeacherWorkflowActions({
 
         {!canRequestCorrection &&
           !canMarkCorrected &&
+          !canReopenForCorrection &&
           !canValidate &&
           !canLock &&
           !canArchive && (
