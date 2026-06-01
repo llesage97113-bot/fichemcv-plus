@@ -9,6 +9,10 @@ type ClassItem = {
   level: string | null;
   registration_code: string | null;
   is_registration_open: boolean | null;
+  students_total?: number;
+  students_pending?: number;
+  students_validated?: number;
+  students_rejected?: number;
 };
 
 export default function ClassRegistrationManager() {
@@ -321,6 +325,36 @@ Après inscription, ton professeur devra valider ton compte.`;
                           ? "Inscriptions ouvertes"
                           : "Inscriptions fermées"}
                       </span>
+                    </div>
+
+                    <div className="mt-4 grid gap-2 text-xs font-medium sm:grid-cols-4">
+                      <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-emerald-200">
+                        <p className="uppercase tracking-wide opacity-80">Validés</p>
+                        <p className="mt-1 text-lg font-bold">
+                          {classItem.students_validated ?? 0}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-200">
+                        <p className="uppercase tracking-wide opacity-80">En attente</p>
+                        <p className="mt-1 text-lg font-bold">
+                          {classItem.students_pending ?? 0}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2 text-red-200">
+                        <p className="uppercase tracking-wide opacity-80">Refusés</p>
+                        <p className="mt-1 text-lg font-bold">
+                          {classItem.students_rejected ?? 0}
+                        </p>
+                      </div>
+
+                      <div className="rounded-xl border border-slate-700 bg-slate-900/80 px-3 py-2 text-slate-200">
+                        <p className="uppercase tracking-wide opacity-80">Total</p>
+                        <p className="mt-1 text-lg font-bold">
+                          {classItem.students_total ?? 0}
+                        </p>
+                      </div>
                     </div>
                   </div>
 

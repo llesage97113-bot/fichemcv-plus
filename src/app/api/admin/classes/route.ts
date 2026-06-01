@@ -42,7 +42,75 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ classes: data ?? [] });
+  const classes = data ?? [];
+  const classIds = classes.map((classItem) => classItem.id);
+
+  const { data: students, error: studentsError } =
+    classIds.length > 0
+      ? await admin
+          .from("students")
+          .select("class_id, registration_status")
+          .in("class_id", classIds)
+      : { data: [], error: null };
+
+  if (studentsError) {
+    return NextResponse.json({ error: studentsError.message }, { status: 500 });
+  }
+
+  const countersByClass = new Map<
+    string,
+    {
+      students_total: number;
+      students_pending: number;
+      students_validated: number;
+      students_rejected: number;
+    }
+  >();
+
+  for (const classId of classIds) {
+    countersByClass.set(classId, {
+      students_total: 0,
+      students_pending: 0,
+      students_validated: 0,
+      students_rejected: 0,
+    });
+  }
+
+  for (const student of students ?? []) {
+    const classId = student.class_id;
+
+    if (!classId) {
+      continue;
+    }
+
+    const counters = countersByClass.get(classId);
+
+    if (!counters) {
+      continue;
+    }
+
+    counters.students_total += 1;
+
+    if (student.registration_status === "pending") {
+      counters.students_pending += 1;
+    } else if (student.registration_status === "validated") {
+      counters.students_validated += 1;
+    } else if (student.registration_status === "rejected") {
+      counters.students_rejected += 1;
+    }
+  }
+
+  const classesWithCounters = classes.map((classItem) => ({
+    ...classItem,
+    ...(countersByClass.get(classItem.id) ?? {
+      students_total: 0,
+      students_pending: 0,
+      students_validated: 0,
+      students_rejected: 0,
+    }),
+  }));
+
+  return NextResponse.json({ classes: classesWithCounters });
 }
 
 export async function POST(request: Request) {
