@@ -18,6 +18,7 @@ export default function ClassRegistrationManager() {
   const [editedCode, setEditedCode] = useState("");
   const [editedOpen, setEditedOpen] = useState(true);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [copiedInvitationClassId, setCopiedInvitationClassId] = useState<string | null>(null);
 
   const [newName, setNewName] = useState("");
   const [newSchoolYear, setNewSchoolYear] = useState("2025-2026");
@@ -68,6 +69,47 @@ export default function ClassRegistrationManager() {
       }, 2500);
     } catch {
       setMessage("Copie impossible depuis ce navigateur.");
+      setIsError(true);
+    }
+  }
+
+  function buildInvitationMessage(classItem: ClassItem) {
+    const code = classItem.registration_code ?? "CODE_CLASSE";
+    const inscriptionUrl = `${window.location.origin}/inscription-eleve?code=${encodeURIComponent(
+      code
+    )}`;
+
+    return `Bonjour,
+
+Pour créer ton compte FicheMCV+, clique sur ce lien :
+${inscriptionUrl}
+
+Le code classe est normalement déjà renseigné.
+Code classe : ${code}
+
+Après inscription, ton professeur devra valider ton compte.`;
+  }
+
+  async function copyInvitation(classItem: ClassItem) {
+    if (!classItem.registration_code) {
+      setMessage("Impossible de copier l’invitation : code classe manquant.");
+      setIsError(true);
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(buildInvitationMessage(classItem));
+      setCopiedInvitationClassId(classItem.id);
+      setMessage(`Invitation copiée pour ${classItem.name ?? "la classe"}.`);
+      setIsError(false);
+
+      window.setTimeout(() => {
+        setCopiedInvitationClassId((currentId) =>
+          currentId === classItem.id ? null : currentId
+        );
+      }, 2500);
+    } catch {
+      setMessage("Copie de l’invitation impossible depuis ce navigateur.");
       setIsError(true);
     }
   }
@@ -237,19 +279,35 @@ export default function ClassRegistrationManager() {
                       </span>
 
                       {classItem.registration_code && (
-                        <button
-                          type="button"
-                          onClick={() => copyCode(classItem.registration_code)}
-                          className={`rounded-full border px-3 py-1 transition ${
-                            copiedCode === classItem.registration_code
-                              ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-200"
-                              : "border-slate-600 bg-slate-900/80 text-slate-200 hover:bg-slate-800"
-                          }`}
-                        >
-                          {copiedCode === classItem.registration_code
-                            ? "Code copié ✓"
-                            : "Copier le code"}
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => copyCode(classItem.registration_code)}
+                            className={`rounded-full border px-3 py-1 transition ${
+                              copiedCode === classItem.registration_code
+                                ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-200"
+                                : "border-slate-600 bg-slate-900/80 text-slate-200 hover:bg-slate-800"
+                            }`}
+                          >
+                            {copiedCode === classItem.registration_code
+                              ? "Code copié ✓"
+                              : "Copier le code"}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => copyInvitation(classItem)}
+                            className={`rounded-full border px-3 py-1 transition ${
+                              copiedInvitationClassId === classItem.id
+                                ? "border-emerald-400/50 bg-emerald-500/10 text-emerald-200"
+                                : "border-sky-500/40 bg-sky-500/10 text-sky-200 hover:bg-sky-950/40"
+                            }`}
+                          >
+                            {copiedInvitationClassId === classItem.id
+                              ? "Invitation copiée ✓"
+                              : "Copier l’invitation"}
+                          </button>
+                        </>
                       )}
 
                       <span

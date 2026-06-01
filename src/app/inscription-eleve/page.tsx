@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 
 export default function StudentRegistrationPage() {
@@ -18,6 +18,15 @@ export default function StudentRegistrationPage() {
     schoolYear: string;
     message: string;
   } | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const codeFromUrl = params.get("code");
+
+    if (codeFromUrl) {
+      setRegistrationCode(codeFromUrl.toUpperCase());
+    }
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -127,10 +136,19 @@ export default function StudentRegistrationPage() {
                   autoCorrect="off"
                   spellCheck={false}
                   value={registrationCode}
-                  onChange={(event) => setRegistrationCode(event.target.value)}
+                  onChange={(event) => setRegistrationCode(event.target.value.toUpperCase())}
                   placeholder="TMCVB-2026"
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-400"
                 />
+
+                {registrationCode && (
+                  <p className="mt-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-200">
+                    Code classe renseigné :{" "}
+                    <span className="font-mono font-semibold">
+                      {registrationCode}
+                    </span>
+                  </p>
+                )}
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2">
