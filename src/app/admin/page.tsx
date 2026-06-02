@@ -2,6 +2,7 @@ import AppNavigation from "@/components/AppNavigation";
 import AdminTeacherCreator from "@/components/AdminTeacherCreator";
 import AdminTeacherPasswordResetter from "@/components/AdminTeacherPasswordResetter";
 import AdminTeacherActiveToggle from "@/components/AdminTeacherActiveToggle";
+import ClassTeacherAssignmentManager from "@/components/ClassTeacherAssignmentManager";
 import { requireRole } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -186,6 +187,8 @@ export default async function AdminPage() {
             </div>
           )}
         </section>
+
+        <ClassTeacherAssignmentManager />
 
         <section className="grid gap-4 lg:grid-cols-3">
           <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
