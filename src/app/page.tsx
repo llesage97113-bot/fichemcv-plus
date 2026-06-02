@@ -7,16 +7,55 @@ import { requireRole } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function Home() {
-  await requireRole("professeur");
+  const authUser = await requireRole("professeur");
+  const admin = createAdminClient();
 
-  const { data, error } = await supabase
+  const { data: appUser } = await admin
+    .from("app_users")
+    .select("id")
+    .eq("email", authUser.email ?? "")
+    .eq("role", "teacher")
+    .eq("is_active", true)
+    .single();
+
+  const { data: teacherProfile } = appUser
+    ? await admin
+        .from("teachers")
+        .select("id")
+        .eq("user_id", appUser.id)
+        .single()
+    : { data: null };
+
+  const { data: teacherClasses } = teacherProfile
+    ? await admin
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", teacherProfile.id)
+    : { data: null };
+
+  const teacherClassIds = Array.from(
+    new Set(
+      (teacherClasses ?? [])
+        .map((item) => String(item.class_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+
+  let ficheQuery = supabase
     .from("teacher_fiche_dashboard")
     .select("*")
     .order("class_name", { ascending: true })
     .order("last_name", { ascending: true });
 
+  if (teacherClassIds.length > 0) {
+    ficheQuery = ficheQuery.in("class_id", teacherClassIds);
+  } else {
+    ficheQuery = ficheQuery.eq("class_id", "00000000-0000-0000-0000-000000000000");
+  }
+
+  const { data, error } = await ficheQuery;
+
   const fiches = data ?? [];
-  const admin = createAdminClient();
 
   const ficheIds = new Set(
     fiches
@@ -127,7 +166,7 @@ export default async function Home() {
           <div className="rounded-lg border border-yellow-500 bg-yellow-950/40 p-4">
             <p className="font-semibold text-yellow-300">Aucune fiche trouvée</p>
             <p className="text-yellow-200">
-              La connexion fonctionne, mais la vue ne retourne aucune donnée pour le moment.
+              Aucune fiche n’est visible pour ce compte professeur. Vérifie que ce professeur est bien rattaché à une classe dans l’administration.
             </p>
           </div>
         )}

@@ -44,6 +44,42 @@ async function requireTeacher() {
   return user;
 }
 
+async function getTeacherClassIds(
+  admin: ReturnType<typeof createAdminClient>,
+  teacherEmail: string | null | undefined
+) {
+  const { data: appUser } = await admin
+    .from("app_users")
+    .select("id")
+    .eq("email", teacherEmail ?? "")
+    .eq("role", "teacher")
+    .eq("is_active", true)
+    .single();
+
+  const { data: teacherProfile } = appUser
+    ? await admin
+        .from("teachers")
+        .select("id")
+        .eq("user_id", appUser.id)
+        .single()
+    : { data: null };
+
+  const { data: teacherClasses } = teacherProfile
+    ? await admin
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", teacherProfile.id)
+    : { data: null };
+
+  return Array.from(
+    new Set(
+      (teacherClasses ?? [])
+        .map((item) => String(item.class_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+}
+
 export async function GET() {
   const teacher = await requireTeacher();
 
@@ -55,11 +91,13 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
+  const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
 
-  const { data, error } = await admin
+  let studentsQuery = admin
     .from("students")
     .select(`
       id,
+      class_id,
       first_name,
       last_name,
       student_code,
@@ -78,6 +116,17 @@ export async function GET() {
     .neq("registration_status", "rejected")
     .order("last_name", { ascending: true })
     .order("first_name", { ascending: true });
+
+  if (teacherClassIds.length > 0) {
+    studentsQuery = studentsQuery.in("class_id", teacherClassIds);
+  } else {
+    studentsQuery = studentsQuery.eq(
+      "class_id",
+      "00000000-0000-0000-0000-000000000000"
+    );
+  }
+
+  const { data, error } = await studentsQuery;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

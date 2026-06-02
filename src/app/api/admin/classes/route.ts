@@ -30,13 +30,52 @@ export async function GET() {
 
   const admin = createAdminClient();
 
-  const { data, error } = await admin
+  const { data: appUser } = await admin
+    .from("app_users")
+    .select("id")
+    .eq("email", teacher.email ?? "")
+    .eq("role", "teacher")
+    .eq("is_active", true)
+    .single();
+
+  const { data: teacherProfile } = appUser
+    ? await admin
+        .from("teachers")
+        .select("id")
+        .eq("user_id", appUser.id)
+        .single()
+    : { data: null };
+
+  const { data: teacherClasses } = teacherProfile
+    ? await admin
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", teacherProfile.id)
+    : { data: null };
+
+  const teacherClassIds = Array.from(
+    new Set(
+      (teacherClasses ?? [])
+        .map((item) => String(item.class_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+
+  let classesQuery = admin
     .from("classes")
     .select(
       "id, name, school_year, level, registration_code, is_registration_open, created_at, updated_at"
     )
     .order("school_year", { ascending: false })
     .order("name", { ascending: true });
+
+  if (teacherClassIds.length > 0) {
+    classesQuery = classesQuery.in("id", teacherClassIds);
+  } else {
+    classesQuery = classesQuery.eq("id", "00000000-0000-0000-0000-000000000000");
+  }
+
+  const { data, error } = await classesQuery;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

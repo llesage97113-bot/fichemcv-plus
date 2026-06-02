@@ -48,6 +48,49 @@ function getRegistrationClass(registration: {
   return registration.classes ?? null;
 }
 
+async function getTeacherClassIds(
+  admin: ReturnType<typeof createAdminClient>,
+  teacherEmail: string | null | undefined
+) {
+  const { data: appUser } = await admin
+    .from("app_users")
+    .select("id")
+    .eq("email", teacherEmail ?? "")
+    .eq("role", "teacher")
+    .eq("is_active", true)
+    .single();
+
+  const { data: teacherProfile } = appUser
+    ? await admin
+        .from("teachers")
+        .select("id")
+        .eq("user_id", appUser.id)
+        .single()
+    : { data: null };
+
+  const { data: teacherClasses } = teacherProfile
+    ? await admin
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", teacherProfile.id)
+    : { data: null };
+
+  return Array.from(
+    new Set(
+      (teacherClasses ?? [])
+        .map((item) => String(item.class_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+}
+
+function isTeacherAllowedForClass(
+  teacherClassIds: string[],
+  classId: string | null | undefined
+) {
+  return Boolean(classId) && teacherClassIds.includes(String(classId));
+}
+
 const E31_SECTIONS = [
   {
     section_key: "contexte",
@@ -300,8 +343,9 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
+  const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
 
-  const { data, error } = await admin
+  let registrationsQuery = admin
     .from("students")
     .select(`
       id,
@@ -326,6 +370,17 @@ export async function GET() {
     `)
     .eq("registration_status", "pending")
     .order("registration_submitted_at", { ascending: true });
+
+  if (teacherClassIds.length > 0) {
+    registrationsQuery = registrationsQuery.in("class_id", teacherClassIds);
+  } else {
+    registrationsQuery = registrationsQuery.eq(
+      "class_id",
+      "00000000-0000-0000-0000-000000000000"
+    );
+  }
+
+  const { data, error } = await registrationsQuery;
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -397,6 +452,7 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
+  const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
   const body = await request.json().catch(() => null);
 
   const studentId = String(body?.studentId ?? "");
@@ -425,6 +481,16 @@ export async function POST(request: Request) {
             "Inscription en attente introuvable.",
         },
         { status: 500 }
+      );
+    }
+
+    if (!isTeacherAllowedForClass(teacherClassIds, pendingStudent.class_id)) {
+      return NextResponse.json(
+        {
+          error:
+            "Action refusée : cette inscription appartient à une classe qui ne vous est pas rattachée.",
+        },
+        { status: 403 }
       );
     }
 
@@ -503,7 +569,7 @@ export async function POST(request: Request) {
 
   const { data: student, error: studentError } = await admin
     .from("students")
-    .select("id, user_id")
+    .select("id, user_id, class_id")
     .eq("id", studentId)
     .eq("registration_status", "pending")
     .single();
@@ -512,6 +578,16 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: studentError?.message ?? "Élève introuvable." },
       { status: 500 }
+    );
+  }
+
+  if (!isTeacherAllowedForClass(teacherClassIds, student.class_id)) {
+    return NextResponse.json(
+      {
+        error:
+          "Action refusée : cette inscription appartient à une classe qui ne vous est pas rattachée.",
+      },
+      { status: 403 }
     );
   }
 
