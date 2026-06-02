@@ -134,6 +134,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   >("all");
 
   const [isStudentSummaryOpen, setIsStudentSummaryOpen] = useState(false);
+  const [expandedStudentSummaryKey, setExpandedStudentSummaryKey] = useState<string | null>(null);
   const [isReminderMessageCopied, setIsReminderMessageCopied] = useState(false);
   const [isQuickPilotOpen, setIsQuickPilotOpen] = useState(false);
   const [isTeacherActionsOpen, setIsTeacherActionsOpen] = useState(false);
@@ -1006,7 +1007,23 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
                   </span>
                 </div>
 
-                <div className="mb-3 grid gap-2 sm:grid-cols-4">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setExpandedStudentSummaryKey((currentKey) =>
+                      currentKey === summary.key ? null : summary.key
+                    )
+                  }
+                  className="mb-3 rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
+                >
+                  {expandedStudentSummaryKey === summary.key
+                    ? "Masquer le détail élève"
+                    : "Afficher le détail élève"}
+                </button>
+
+                {expandedStudentSummaryKey === summary.key && (
+                  <>
+                    <div className="mb-3 grid gap-2 sm:grid-cols-4">
                   <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
                     <p className="text-xs uppercase tracking-wide text-slate-500">
                       Démarrées
@@ -1128,6 +1145,8 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
                     </button>
                   </div>
                 </div>
+                  </>
+                )}
               </article>
             ))}
           </div>
