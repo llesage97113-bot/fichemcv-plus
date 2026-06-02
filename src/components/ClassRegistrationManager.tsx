@@ -386,29 +386,43 @@ Après inscription, ton professeur devra valider ton compte.`;
                   </div>
 
                   {isEditing ? (
-                    <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] sm:items-center">
-                      <input
-                        value={editedCode}
-                        onChange={(event) => setEditedCode(event.target.value)}
-                        className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
-                      />
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-3">
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                        Réglages du code et des inscriptions
+                      </p>
 
-                      <label className="flex items-center gap-2 text-sm text-slate-300">
+                      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-center">
                         <input
-                          type="checkbox"
-                          checked={editedOpen}
-                          onChange={(event) => setEditedOpen(event.target.checked)}
+                          value={editedCode}
+                          onChange={(event) => setEditedCode(event.target.value)}
+                          className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
                         />
-                        Ouvert
-                      </label>
 
-                      <button
-                        type="button"
-                        onClick={() => saveClass(classItem.id)}
-                        className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400"
-                      >
-                        Enregistrer
-                      </button>
+                        <label className="flex items-center gap-2 text-sm text-slate-300">
+                          <input
+                            type="checkbox"
+                            checked={editedOpen}
+                            onChange={(event) => setEditedOpen(event.target.checked)}
+                          />
+                          Inscriptions ouvertes
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={() => saveClass(classItem.id)}
+                          className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400"
+                        >
+                          Enregistrer les réglages
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => setEditingClassId(null)}
+                          className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800"
+                        >
+                          Annuler
+                        </button>
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -416,7 +430,7 @@ Après inscription, ton professeur devra valider ton compte.`;
                       onClick={() => startEditing(classItem)}
                       className="rounded-xl border border-sky-500/40 px-4 py-2 text-sm font-medium text-sky-200 transition hover:bg-sky-950/40"
                     >
-                      Modifier
+                      Gérer le code / inscriptions
                     </button>
                   )}
                 </div>
