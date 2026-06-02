@@ -132,6 +132,8 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [studentActivityFilter, setStudentActivityFilter] = useState<
     "all" | "to_restart" | "active"
   >("all");
+
+  const [isStudentSummaryOpen, setIsStudentSummaryOpen] = useState(false);
   const [isReminderMessageCopied, setIsReminderMessageCopied] = useState(false);
   const [isQuickPilotOpen, setIsQuickPilotOpen] = useState(false);
   const [isTeacherActionsOpen, setIsTeacherActionsOpen] = useState(false);
@@ -558,221 +560,6 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
 
   return (
     <>
-      <section className="mb-4 rounded-2xl border border-sky-500/30 bg-slate-900/60 px-5 py-3 shadow-sm">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-sky-300">
-              Pilotage rapide
-            </h2>
-            <p className="mt-1 text-xs text-slate-400">
-              {filteredFiches.length} fiche(s) affichée(s) sur {fiches.length}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsQuickPilotOpen((current) => !current)}
-            className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-950/40"
-          >
-            {isQuickPilotOpen ? "Masquer le pilotage" : "Afficher le pilotage"}
-          </button>
-        </div>
-
-        {isQuickPilotOpen && (
-          <div className="mt-4 border-t border-slate-800 pt-4">
-            <p className="mb-3 text-xs text-slate-500">
-              Filtre classe : {classFilter === "all" ? "Toutes" : classFilter}
-              {" · "}
-              Classes affichées : {displayedClasses.join(", ") || "aucune"}
-            </p>
-
-            <div className="flex flex-wrap gap-2 text-xs font-medium">
-              <span className="rounded-full border border-slate-700 bg-slate-950/60 px-3 py-1 text-slate-300">
-                Total : <span className="font-bold text-slate-100">{dashboardStats.total}</span>
-              </span>
-
-              <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-amber-200">
-                Brouillons : <span className="font-bold">{dashboardStats.drafts}</span>
-              </span>
-
-              <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
-                Soumises : <span className="font-bold">{dashboardStats.submitted}</span>
-              </span>
-
-              <span className="rounded-full border border-orange-500/40 bg-orange-500/10 px-3 py-1 text-orange-200">
-                À corriger : <span className="font-bold">{dashboardStats.correction}</span>
-              </span>
-
-              <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-emerald-200">
-                Finalisées : <span className="font-bold">{dashboardStats.final}</span>
-              </span>
-            </div>
-          </div>
-        )}
-      </section>
-
-      <section className="mb-8 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-100">
-              Cycle de traitement des fiches
-            </h2>
-            <p className="text-sm text-slate-400">
-              Rappel du parcours complet d’une fiche, de sa rédaction jusqu’à son archivage.
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsWorkflowSummaryOpen((current) => !current)}
-            className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-950/40"
-          >
-            {isWorkflowSummaryOpen ? "Masquer le cycle" : "Afficher le cycle"}
-          </button>
-        </div>
-
-        {isWorkflowSummaryOpen && (
-          <div className="mt-4">
-            <div className="flex flex-wrap gap-2 text-xs font-medium">
-              <span className="rounded-full border border-slate-700 px-3 py-1 text-slate-300">Brouillon</span>
-              <span className="text-slate-500">→</span>
-              <span className="rounded-full border border-sky-500/40 px-3 py-1 text-sky-300">Soumise</span>
-              <span className="text-slate-500">→</span>
-              <span className="rounded-full border border-amber-500/40 px-3 py-1 text-amber-300">À corriger</span>
-              <span className="text-slate-500">→</span>
-              <span className="rounded-full border border-indigo-500/40 px-3 py-1 text-indigo-300">Corrigée</span>
-              <span className="text-slate-500">→</span>
-              <span className="rounded-full border border-emerald-500/40 px-3 py-1 text-emerald-300">Validée</span>
-              <span className="text-slate-500">→</span>
-              <span className="rounded-full border border-purple-500/40 px-3 py-1 text-purple-300">Verrouillée</span>
-              <span className="text-slate-500">→</span>
-              <span className="rounded-full border border-slate-500 px-3 py-1 text-slate-300">Archivée</span>
-            </div>
-
-            <p className="mt-3 text-sm text-slate-400">
-              Une fiche archivée reste complète, consultable en lecture seule et ne doit jamais apparaître vierge.
-            </p>
-          </div>
-        )}
-      </section>
-
-<section className="mb-8 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-100">
-              Actions professeur — {priorityFiches.length} fiche(s) à traiter
-            </h2>
-            <p className="text-sm text-slate-400">
-              {priorityFiches.length > 0
-                ? "Les fiches sont regroupées selon l’action attendue dans le workflow."
-                : "Aucune action urgente actuellement : toutes les fiches sont à jour dans le workflow."}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsTeacherActionsOpen((current) => !current)}
-            className="rounded-xl border border-amber-500/40 px-3 py-2 text-xs font-semibold text-amber-200 transition hover:bg-amber-950/30"
-          >
-            {isTeacherActionsOpen ? "Masquer le détail" : "Afficher le détail"}
-          </button>
-        </div>
-
-        {isTeacherActionsOpen && (
-          <div className="mt-4 flex flex-wrap gap-2">
-            {priorityGroups.map((group) => (
-              <span
-                key={group.status}
-                className="rounded-full border border-slate-700 bg-slate-900/80 px-3 py-1 text-xs font-medium text-slate-300"
-              >
-                {group.title} : {group.items.length}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {isTeacherActionsOpen && priorityFiches.length === 0 && (
-          <div className="mt-4 rounded-2xl border border-emerald-400/20 bg-slate-950/60 p-4">
-            <p className="text-sm font-medium text-emerald-100">
-              ✅ Toutes les fiches sont à jour dans le workflow.
-            </p>
-          </div>
-        )}
-
-        {isTeacherActionsOpen && priorityFiches.length > 0 && (
-          <div className="mt-4 grid gap-4 lg:grid-cols-2 xl:grid-cols-4">
-            {priorityGroups.map((group) => (
-              <div
-                key={group.status}
-                className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
-              >
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div>
-                    <h3 className="font-semibold text-slate-100">
-                      {group.title}
-                    </h3>
-                    <p className="mt-1 text-xs leading-5 text-slate-400">
-                      {group.description}
-                    </p>
-                  </div>
-
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                      group.items.length > 0
-                        ? "bg-amber-400/15 text-amber-200"
-                        : "bg-slate-800 text-slate-400"
-                    }`}
-                  >
-                    {group.items.length}
-                  </span>
-                </div>
-
-                {group.items.length === 0 && (
-                  <p className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 text-sm text-slate-500">
-                    Aucune fiche.
-                  </p>
-                )}
-
-                {group.items.length > 0 && (
-                  <div className="space-y-3">
-                    {group.items.map((fiche) => (
-                      <Link
-                        key={fiche.fiche_id}
-                        href={`/fiches/${fiche.fiche_id}`}
-                        className="block rounded-xl border border-slate-800 bg-slate-900/80 p-3 transition hover:border-amber-300/60 hover:bg-slate-900"
-                      >
-                        <div className="mb-2 flex items-start justify-between gap-2">
-                          <div>
-                            <p className="font-medium text-slate-100">
-                              {fiche.first_name} {fiche.last_name}
-                            </p>
-                            <p className="text-xs text-slate-500">
-                              {fiche.epreuve} · Fiche n°{fiche.numero_fiche}
-                            </p>
-                          </div>
-
-                          <span className="rounded-full bg-amber-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-200">
-                            {getPriorityLabel(fiche.status ?? "")}
-                          </span>
-                        </div>
-
-                        <p className="text-sm text-slate-400">
-                          Complétude : {fiche.completion_score ?? 0} %
-                        </p>
-
-                        <p className="mt-1 text-xs leading-5 text-amber-100/80">
-                          {getPriorityActionLabel(fiche.status ?? "")}
-                        </p>
-                      </Link>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
       <section
         id="teacher-fiche-list"
         className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm"
@@ -983,6 +770,18 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
           </div>
         )}
 
+        <button
+          type="button"
+          onClick={() => setIsStudentSummaryOpen((current) => !current)}
+          className="mb-4 rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-950/40"
+        >
+          {isStudentSummaryOpen
+            ? "Masquer la synthèse élèves"
+            : "Afficher la synthèse élèves"}
+        </button>
+
+        {isStudentSummaryOpen && (
+          <>
         {studentSummaries.length > 0 && (
           <div className="mb-4 grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
@@ -1332,6 +1131,8 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
               </article>
             ))}
           </div>
+        )}
+          </>
         )}
       </section>
 
