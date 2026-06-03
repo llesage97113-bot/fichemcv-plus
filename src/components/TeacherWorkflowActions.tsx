@@ -14,7 +14,7 @@ function getTeacherStatusMessage(status: string | null) {
     case "soumise":
       return "Action professeur attendue : lire la fiche et décider de la suite.";
     case "a_corriger":
-      return "En attente côté élève : l’élève doit corriger sa fiche.";
+      return "En attente de correction élève.";
     case "corrigee":
       return "Action professeur attendue : valider la fiche ou la rouvrir en correction.";
     case "validee":
@@ -31,9 +31,10 @@ function getTeacherStatusMessage(status: string | null) {
 function getWorkflowBoxClasses(status: string | null) {
   switch (status) {
     case "soumise":
-    case "a_corriger":
     case "corrigee":
       return "border-red-500/40 bg-red-500/10";
+    case "a_corriger":
+      return "border-emerald-500/40 bg-emerald-500/10";
     case "validee":
     case "verrouillee":
       return "border-amber-500/40 bg-amber-500/10";
@@ -47,9 +48,10 @@ function getWorkflowBoxClasses(status: string | null) {
 function getWorkflowLabelClasses(status: string | null) {
   switch (status) {
     case "soumise":
-    case "a_corriger":
     case "corrigee":
       return "text-red-300";
+    case "a_corriger":
+      return "text-emerald-300";
     case "validee":
     case "verrouillee":
       return "text-amber-300";
@@ -63,9 +65,10 @@ function getWorkflowLabelClasses(status: string | null) {
 function getWorkflowMessageClasses(status: string | null) {
   switch (status) {
     case "soumise":
-    case "a_corriger":
     case "corrigee":
       return "text-red-100";
+    case "a_corriger":
+      return "text-emerald-100";
     case "validee":
     case "verrouillee":
       return "text-amber-100";
@@ -78,6 +81,8 @@ function getWorkflowMessageClasses(status: string | null) {
 
 function getPassiveWorkflowLabel(status: string | null) {
   switch (status) {
+    case "a_corriger":
+      return "En attente de correction élève";
     case "archivee":
       return "Fiche archivée — lecture seule";
     default:
@@ -98,7 +103,7 @@ export default function TeacherWorkflowActions({
   );
 
   const canRequestCorrection = status === "soumise";
-  const canMarkCorrected = status === "a_corriger";
+  const canMarkCorrected = false;
   const canReopenForCorrection = status === "corrigee";
   const canValidate = status === "corrigee";
   const canLock = status === "validee";
@@ -184,9 +189,9 @@ export default function TeacherWorkflowActions({
               );
             }}
             disabled={isLoading}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-red-950/30 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-400/50 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
-            {isLoading ? "Traitement en cours..." : "Marquer comme corrigée"}
+            {isLoading ? "Traitement en cours..." : "Marquer la correction comme traitée"}
           </button>
         )}
 
@@ -254,9 +259,13 @@ export default function TeacherWorkflowActions({
         )}
 
         {passiveWorkflowLabel && (
-          <span className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 sm:w-auto">
+          <button
+            type="button"
+            disabled
+            className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-lg border border-emerald-400/50 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 sm:w-auto"
+          >
             {passiveWorkflowLabel}
-          </span>
+          </button>
         )}
 
         {!canRequestCorrection &&

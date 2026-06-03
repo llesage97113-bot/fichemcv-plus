@@ -13,9 +13,8 @@ type SubmitFicheButtonProps = {
 function getStatusLabel(status: string | null) {
   switch (status) {
     case "soumise":
-      return "Fiche déjà soumise";
     case "corrigee":
-      return "Fiche corrigée";
+      return "En attente de la réponse professeur";
     case "validee":
       return "Fiche validée";
     case "verrouillee":
@@ -24,6 +23,106 @@ function getStatusLabel(status: string | null) {
       return "Fiche archivée";
     default:
       return null;
+  }
+}
+
+function getStudentWorkflowBoxClasses(
+  status: string | null,
+  isTooIncomplete: boolean
+) {
+  if (status === "brouillon" || status === "a_corriger" || isTooIncomplete) {
+    return "border-red-500/40 bg-red-500/10";
+  }
+
+  if (status === "soumise" || status === "corrigee") {
+    return "border-emerald-500/40 bg-emerald-500/10";
+  }
+
+  if (
+    status === "validee" ||
+    status === "verrouillee" ||
+    status === "archivee"
+  ) {
+    return "border-slate-700 bg-slate-950/50";
+  }
+
+  return "border-red-500/40 bg-red-500/10";
+}
+
+function getStudentWorkflowLabelClasses(
+  status: string | null,
+  isTooIncomplete: boolean
+) {
+  if (status === "brouillon" || status === "a_corriger" || isTooIncomplete) {
+    return "text-red-300";
+  }
+
+  if (status === "soumise" || status === "corrigee") {
+    return "text-emerald-300";
+  }
+
+  if (
+    status === "validee" ||
+    status === "verrouillee" ||
+    status === "archivee"
+  ) {
+    return "text-slate-400";
+  }
+
+  return "text-red-300";
+}
+
+function getStudentWorkflowMessageClasses(
+  status: string | null,
+  isTooIncomplete: boolean
+) {
+  if (status === "brouillon" || status === "a_corriger" || isTooIncomplete) {
+    return "text-red-100";
+  }
+
+  if (status === "soumise" || status === "corrigee") {
+    return "text-emerald-100";
+  }
+
+  if (
+    status === "validee" ||
+    status === "verrouillee" ||
+    status === "archivee"
+  ) {
+    return "text-slate-400";
+  }
+
+  return "text-red-100";
+}
+
+function getStudentWorkflowMessage(
+  status: string | null,
+  isTooIncomplete: boolean,
+  completionScore: number
+) {
+  if (isTooIncomplete && status !== "soumise" && status !== "corrigee") {
+    return `Action élève attendue : complète encore ta fiche avant de pouvoir la soumettre. Score actuel : ${completionScore} %.`;
+  }
+
+  switch (status) {
+    case "a_corriger":
+      return "Action élève attendue : corrige ta fiche puis resoumets-la au professeur.";
+    case "brouillon":
+    case "non_commencee":
+    case null:
+      return "Action élève attendue : complète ta fiche puis soumets-la au professeur.";
+    case "soumise":
+      return "En attente du professeur : ta fiche a été soumise.";
+    case "corrigee":
+      return "En attente du professeur : ta fiche a été corrigée et attend validation.";
+    case "validee":
+      return "Fiche validée : elle reste consultable.";
+    case "verrouillee":
+      return "Fiche verrouillée : elle est conservée en lecture seule.";
+    case "archivee":
+      return "Fiche archivée : lecture seule.";
+    default:
+      return "Consulte l’état de ta fiche.";
   }
 }
 
@@ -51,7 +150,6 @@ export default function SubmitFicheButton({
   const isTooIncomplete = completionScore < 55;
 
   const isDisabled = isSubmitting || isWorkflowLocked || isTooIncomplete;
-
   const statusLabel = getStatusLabel(status);
 
   const buttonLabel = isSubmitting
@@ -108,15 +206,29 @@ export default function SubmitFicheButton({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+    <div
+      className={`rounded-2xl border p-4 ${getStudentWorkflowBoxClasses(
+        status,
+        isTooIncomplete
+      )}`}
+    >
       <div className="mb-3">
-        <p className="text-xs uppercase tracking-wide text-slate-500">
-          Action sur la fiche
+        <p
+          className={`text-xs uppercase tracking-wide ${getStudentWorkflowLabelClasses(
+            status,
+            isTooIncomplete
+          )}`}
+        >
+          Action élève
         </p>
-        <p className="text-sm text-slate-300">
-          {isCorrectionMode
-            ? "Après correction, tu peux renvoyer ta fiche au professeur."
-            : "La soumission signalera que la fiche est prête pour correction."}
+
+        <p
+          className={`text-sm font-medium ${getStudentWorkflowMessageClasses(
+            status,
+            isTooIncomplete
+          )}`}
+        >
+          {getStudentWorkflowMessage(status, isTooIncomplete, completionScore)}
         </p>
       </div>
 
@@ -124,30 +236,36 @@ export default function SubmitFicheButton({
         type="button"
         onClick={handleSubmit}
         disabled={isDisabled}
-        className="inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+        className={`inline-flex w-full items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold transition disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto ${
+          isWorkflowLocked
+            ? "border border-emerald-400/50 bg-emerald-500/10 font-bold text-emerald-100"
+            : isTooIncomplete
+              ? "bg-slate-700 text-slate-400"
+              : "bg-red-500 text-white shadow-sm shadow-red-950/30 hover:bg-red-400"
+        }`}
       >
         {buttonLabel}
       </button>
 
       {isWorkflowLocked && (
-        <p className="mt-3 text-xs text-amber-300">
-          Cette fiche n’est plus modifiable librement car son statut actuel est :{" "}
-          {status}.
+        <p className="mt-3 text-xs text-emerald-200">
+          {status === "soumise" || status === "corrigee"
+            ? "Tu n’as rien à faire pour le moment : ton professeur doit traiter cette fiche."
+            : "Cette fiche est maintenant en lecture seule."}
         </p>
       )}
 
       {!isWorkflowLocked && isTooIncomplete && (
-        <p className="mt-3 text-xs text-amber-300">
+        <p className="mt-3 text-xs text-red-200">
           La fiche doit atteindre au moins 55 % de complétude avant soumission.
-          Score actuel : {completionScore} %.
         </p>
       )}
 
       {!isWorkflowLocked && !isTooIncomplete && (
-        <p className="mt-3 text-xs text-emerald-300">
+        <p className="mt-3 text-xs text-red-100">
           {isCorrectionMode
-            ? "La fiche peut être resoumise après correction."
-            : "La fiche peut être soumise pour correction."}
+            ? "Après correction, renvoie ta fiche au professeur."
+            : "Quand ta fiche est prête, soumets-la au professeur."}
         </p>
       )}
 

@@ -120,6 +120,45 @@ function normalizeClassName(value: string | null | undefined) {
     .replace(/[^A-Z0-9]/g, "");
 }
 
+function getTeacherDashboardStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case "brouillon":
+      return "Brouillon élève";
+    case "soumise":
+      return "Action professeur";
+    case "a_corriger":
+      return "En attente correction élève";
+    case "corrigee":
+      return "Action professeur";
+    case "validee":
+      return "À verrouiller";
+    case "verrouillee":
+      return "À archiver";
+    case "archivee":
+      return "Archivée";
+    default:
+      return status ?? "Statut inconnu";
+  }
+}
+
+function getTeacherDashboardStatusClasses(status: string | null | undefined) {
+  switch (status) {
+    case "soumise":
+    case "corrigee":
+      return "border-red-500/40 bg-red-500/10 text-red-200";
+    case "a_corriger":
+      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+    case "validee":
+    case "verrouillee":
+      return "border-amber-500/40 bg-amber-500/10 text-amber-200";
+    case "archivee":
+      return "border-slate-700 bg-slate-900/80 text-slate-400";
+    case "brouillon":
+    default:
+      return "border-slate-700 bg-slate-900/80 text-slate-300";
+  }
+}
+
 export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
@@ -549,6 +588,30 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
     return true;
   });
 
+  const studentCorrectionFiches = filteredFiches.filter(
+    (fiche) => fiche.status === "a_corriger"
+  );
+
+  const sortedStudentCorrectionFiches = [...studentCorrectionFiches].sort((a, b) => {
+    const classCompare = String(a.class_name ?? "").localeCompare(
+      String(b.class_name ?? "")
+    );
+
+    if (classCompare !== 0) {
+      return classCompare;
+    }
+
+    const lastNameCompare = String(a.last_name ?? "").localeCompare(
+      String(b.last_name ?? "")
+    );
+
+    if (lastNameCompare !== 0) {
+      return lastNameCompare;
+    }
+
+    return Number(a.numero_fiche ?? 0) - Number(b.numero_fiche ?? 0);
+  });
+
   const sortedStudentSummaries = [...visibleStudentSummaries].sort((a, b) => {
     const lastNameCompare = a.lastName.localeCompare(b.lastName);
 
@@ -561,6 +624,59 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
 
   return (
     <>
+      {studentCorrectionFiches.length > 0 && (
+        <section className="mb-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-emerald-300">
+                En attente côté élèves
+              </p>
+
+              <h2 className="mt-2 text-xl font-bold text-emerald-100">
+                {studentCorrectionFiches.length} fiche(s) en correction élève
+              </h2>
+
+              <p className="mt-2 text-sm leading-6 text-emerald-100/80">
+                Ces fiches ont été renvoyées en correction. L’action attendue est maintenant côté élève :
+                l’élève doit corriger puis resoumettre sa fiche.
+              </p>
+            </div>
+
+            <span className="inline-flex rounded-full border border-emerald-400/50 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
+              Attente élève
+            </span>
+          </div>
+
+          <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+            {sortedStudentCorrectionFiches.slice(0, 6).map((fiche) => (
+              <Link
+                key={fiche.fiche_id}
+                href={`/fiches/${fiche.fiche_id}`}
+                className="rounded-xl border border-emerald-500/30 bg-slate-950/50 p-3 transition hover:border-emerald-300/70 hover:bg-slate-950"
+              >
+                <p className="font-semibold text-slate-100">
+                  {fiche.first_name} {fiche.last_name}
+                </p>
+
+                <p className="mt-1 text-xs text-slate-400">
+                  {fiche.class_name} · {fiche.epreuve} · Fiche n°{fiche.numero_fiche}
+                </p>
+
+                <p className="mt-2 text-xs font-medium text-emerald-200">
+                  En attente de correction élève
+                </p>
+              </Link>
+            ))}
+          </div>
+
+          {studentCorrectionFiches.length > 6 && (
+            <p className="mt-3 text-xs text-emerald-100/70">
+              + {studentCorrectionFiches.length - 6} autre(s) fiche(s) en attente côté élève.
+            </p>
+          )}
+        </section>
+      )}
+
       <section
         id="teacher-fiche-list"
         className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm"
@@ -1304,7 +1420,15 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
                         </div>
                       </td>
 
-                      <td className="p-3">{fiche.status}</td>
+                      <td className="p-3">
+                        <span
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getTeacherDashboardStatusClasses(
+                            fiche.status
+                          )}`}
+                        >
+                          {getTeacherDashboardStatusLabel(fiche.status)}
+                        </span>
+                      </td>
 
                       <td className="p-3">
                         <div className="min-w-36">
