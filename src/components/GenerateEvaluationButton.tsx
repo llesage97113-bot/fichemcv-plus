@@ -77,6 +77,7 @@ export default function GenerateEvaluationButton({
   const [reportCreatedAt, setReportCreatedAt] = useState<string | null>(
     initialReportCreatedAt
   );
+  const [isReportOpen, setIsReportOpen] = useState(false);
 
   useEffect(() => {
     async function loadLatestReport() {
@@ -133,6 +134,7 @@ export default function GenerateEvaluationButton({
 
       setReport(payload.report?.report_json ?? null);
       setReportCreatedAt(payload.report?.created_at ?? null);
+      setIsReportOpen(true);
       setMessage(
         "Analyse pédagogique générée. Elle est enregistrée avec le statut “à vérifier”."
       );
@@ -195,10 +197,20 @@ export default function GenerateEvaluationButton({
       )}
 
       {report && (
-        <section
-          id="generated-analysis-report"
-          className="mt-4 scroll-mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-4"
-        >
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => setIsReportOpen((current) => !current)}
+            className="rounded-xl border border-sky-500/40 px-4 py-2 text-sm font-semibold text-sky-200 transition hover:bg-sky-950/40"
+          >
+            {isReportOpen ? "Masquer l’analyse" : "Afficher l’analyse"}
+          </button>
+
+          {isReportOpen && (
+            <section
+              id="generated-analysis-report"
+              className="mt-4 scroll-mt-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-4"
+            >
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <p className="text-sm font-semibold text-slate-100">
@@ -278,7 +290,9 @@ export default function GenerateEvaluationButton({
               </p>
             </div>
           </div>
-        </section>
+            </section>
+          )}
+        </div>
       )}
     </div>
   );
