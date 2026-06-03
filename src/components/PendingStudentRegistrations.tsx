@@ -90,6 +90,36 @@ export default function PendingStudentRegistrations() {
     }
   }
 
+  async function handleExportXlsx() {
+    try {
+      const response = await fetch("/api/admin/student-registrations/export-xlsx");
+
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? "Export Excel impossible.");
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "eleves-inscrits-fichemcv.xlsx";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      setMessage(
+        error instanceof Error
+          ? error.message
+          : "Erreur inconnue pendant l’export Excel."
+      );
+      setIsError(true);
+    }
+  }
+
   async function handleAction(studentId: string, action: "validate" | "reject") {
     const registration = registrations.find((item) => item.id === studentId);
 
@@ -173,10 +203,18 @@ export default function PendingStudentRegistrations() {
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
+            onClick={handleExportXlsx}
+            className="rounded-xl bg-emerald-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-400"
+          >
+            Exporter les élèves Excel
+          </button>
+
+          <button
+            type="button"
             onClick={handleExportCsv}
             className="rounded-xl border border-sky-500/40 px-4 py-2 text-sm font-medium text-sky-200 transition hover:bg-sky-950/40"
           >
-            Exporter les élèves CSV
+            Exporter CSV
           </button>
 
           <button
