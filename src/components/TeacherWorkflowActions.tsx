@@ -12,19 +12,76 @@ type TeacherWorkflowActionsProps = {
 function getTeacherStatusMessage(status: string | null) {
   switch (status) {
     case "soumise":
-      return "Cette fiche a été soumise. Le professeur peut demander des corrections.";
+      return "Action professeur attendue : lire la fiche et décider de la suite.";
     case "a_corriger":
-      return "Cette fiche est revenue en phase de correction.";
+      return "En attente côté élève : l’élève doit corriger sa fiche.";
     case "corrigee":
-      return "Cette fiche a été corrigée. Elle peut maintenant être validée.";
+      return "Action professeur attendue : valider la fiche ou la rouvrir en correction.";
     case "validee":
-      return "Cette fiche est validée. Elle peut maintenant être verrouillée.";
+      return "Action professeur attendue : verrouiller la fiche.";
     case "verrouillee":
-      return "Cette fiche est verrouillée. Elle peut maintenant être archivée.";
+      return "Action professeur attendue : archiver la fiche.";
     case "archivee":
-      return "Cette fiche est archivée.";
+      return "Fiche archivée : lecture seule, aucune action attendue.";
     default:
       return "Aucune action professeur disponible pour ce statut.";
+  }
+}
+
+function getWorkflowBoxClasses(status: string | null) {
+  switch (status) {
+    case "soumise":
+    case "a_corriger":
+    case "corrigee":
+      return "border-red-500/40 bg-red-500/10";
+    case "validee":
+    case "verrouillee":
+      return "border-amber-500/40 bg-amber-500/10";
+    case "archivee":
+      return "border-slate-700 bg-slate-950/50";
+    default:
+      return "border-slate-800 bg-slate-950/50";
+  }
+}
+
+function getWorkflowLabelClasses(status: string | null) {
+  switch (status) {
+    case "soumise":
+    case "a_corriger":
+    case "corrigee":
+      return "text-red-300";
+    case "validee":
+    case "verrouillee":
+      return "text-amber-300";
+    case "archivee":
+      return "text-slate-400";
+    default:
+      return "text-slate-500";
+  }
+}
+
+function getWorkflowMessageClasses(status: string | null) {
+  switch (status) {
+    case "soumise":
+    case "a_corriger":
+    case "corrigee":
+      return "text-red-100";
+    case "validee":
+    case "verrouillee":
+      return "text-amber-100";
+    case "archivee":
+      return "text-slate-400";
+    default:
+      return "text-slate-300";
+  }
+}
+
+function getPassiveWorkflowLabel(status: string | null) {
+  switch (status) {
+    case "archivee":
+      return "Fiche archivée — lecture seule";
+    default:
+      return null;
   }
 }
 
@@ -46,6 +103,7 @@ export default function TeacherWorkflowActions({
   const canValidate = status === "corrigee";
   const canLock = status === "validee";
   const canArchive = status === "verrouillee";
+  const passiveWorkflowLabel = getPassiveWorkflowLabel(status);
 
   async function runWorkflowAction(
     rpcName:
@@ -81,12 +139,12 @@ export default function TeacherWorkflowActions({
   }
 
   return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+    <div className={`rounded-2xl border p-4 ${getWorkflowBoxClasses(status)}`}>
       <div className="mb-3">
-        <p className="text-xs uppercase tracking-wide text-slate-500">
+        <p className={`text-xs uppercase tracking-wide ${getWorkflowLabelClasses(status)}`}>
           Actions professeur
         </p>
-        <p className="text-sm text-slate-300">
+        <p className={`text-sm font-medium ${getWorkflowMessageClasses(status)}`}>
           {getTeacherStatusMessage(status)}
         </p>
       </div>
@@ -102,7 +160,7 @@ export default function TeacherWorkflowActions({
               )
             }
             disabled={isLoading}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-red-950/30 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
             {isLoading ? "Renvoi en cours..." : "Renvoyer en correction"}
           </button>
@@ -126,7 +184,7 @@ export default function TeacherWorkflowActions({
               );
             }}
             disabled={isLoading}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-emerald-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-red-950/30 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
             {isLoading ? "Traitement en cours..." : "Marquer comme corrigée"}
           </button>
@@ -163,7 +221,7 @@ export default function TeacherWorkflowActions({
               runWorkflowAction("validate_fiche", "La fiche a été validée.")
             }
             disabled={isLoading}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-red-950/30 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
             {isLoading ? "Validation en cours..." : "Valider la fiche"}
           </button>
@@ -176,7 +234,7 @@ export default function TeacherWorkflowActions({
               runWorkflowAction("lock_fiche", "La fiche a été verrouillée.")
             }
             disabled={isLoading}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-slate-200 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm shadow-amber-950/30 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
             {isLoading ? "Verrouillage en cours..." : "Verrouiller la fiche"}
           </button>
@@ -189,10 +247,16 @@ export default function TeacherWorkflowActions({
               runWorkflowAction("archive_fiche", "La fiche a été archivée.")
             }
             disabled={isLoading}
-            className="inline-flex w-full items-center justify-center rounded-lg border border-slate-600 bg-slate-900 px-4 py-2 text-sm font-semibold text-slate-100 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm shadow-amber-950/30 transition hover:bg-amber-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
             {isLoading ? "Archivage en cours..." : "Archiver la fiche"}
           </button>
+        )}
+
+        {passiveWorkflowLabel && (
+          <span className="inline-flex w-full items-center justify-center rounded-lg border border-emerald-400/40 bg-emerald-500/10 px-4 py-2 text-sm font-semibold text-emerald-100 sm:w-auto">
+            {passiveWorkflowLabel}
+          </span>
         )}
 
         {!canRequestCorrection &&
@@ -200,7 +264,8 @@ export default function TeacherWorkflowActions({
           !canReopenForCorrection &&
           !canValidate &&
           !canLock &&
-          !canArchive && (
+          !canArchive &&
+          !passiveWorkflowLabel && (
             <p className="text-xs text-slate-500">
               Aucune action professeur disponible à ce stade du workflow.
             </p>

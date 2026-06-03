@@ -41,20 +41,74 @@ function getGlobalProgressClasses(score: number) {
   };
 }
 
+async function getTeacherClassIds(
+  admin: ReturnType<typeof createAdminClient>,
+  teacherEmail: string | null | undefined
+) {
+  const { data: appUser } = await admin
+    .from("app_users")
+    .select("id")
+    .eq("email", teacherEmail ?? "")
+    .eq("role", "teacher")
+    .eq("is_active", true)
+    .single();
+
+  const { data: teacherProfile } = appUser
+    ? await admin
+        .from("teachers")
+        .select("id")
+        .eq("user_id", appUser.id)
+        .single()
+    : { data: null };
+
+  const { data: teacherClasses } = teacherProfile
+    ? await admin
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", teacherProfile.id)
+    : { data: null };
+
+  return Array.from(
+    new Set(
+      (teacherClasses ?? [])
+        .map((item) => String(item.class_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+}
+
 export default async function FicheDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  await requireRole("professeur");
+  const authUser = await requireRole("professeur");
 
   const { id } = await params;
+  const admin = createAdminClient();
 
-  const { data: fiche, error: ficheError } = await supabase
+  const teacherClassIds =
+    authUser.app_metadata?.role === "admin"
+      ? []
+      : await getTeacherClassIds(admin, authUser.email);
+
+  let ficheQuery = supabase
     .from("teacher_fiche_dashboard")
     .select("*")
-    .eq("fiche_id", id)
-    .single();
+    .eq("fiche_id", id);
+
+  if (authUser.app_metadata?.role !== "admin") {
+    if (teacherClassIds.length > 0) {
+      ficheQuery = ficheQuery.in("class_id", teacherClassIds);
+    } else {
+      ficheQuery = ficheQuery.eq(
+        "class_id",
+        "00000000-0000-0000-0000-000000000000"
+      );
+    }
+  }
+
+  const { data: fiche, error: ficheError } = await ficheQuery.single();
 
   if (ficheError || !fiche) {
     notFound();
@@ -65,8 +119,6 @@ export default async function FicheDetailPage({
     .select("*")
     .eq("fiche_id", id)
     .order("sort_order", { ascending: true });
-
-  const admin = createAdminClient();
 
   const { data: evaluations } = await admin
     .from("evaluations")

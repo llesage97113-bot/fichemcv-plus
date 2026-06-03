@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import AppNavigation from "@/components/AppNavigation";
 import { requireAnyRole } from "@/lib/auth/requireUser";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function getProgressClasses(score: number) {
   if (score >= 80) {
@@ -100,6 +101,42 @@ function getStatusHelp(status: string | null) {
   }
 }
 
+async function getTeacherClassIds(
+  admin: ReturnType<typeof createAdminClient>,
+  teacherEmail: string | null | undefined
+) {
+  const { data: appUser } = await admin
+    .from("app_users")
+    .select("id")
+    .eq("email", teacherEmail ?? "")
+    .eq("role", "teacher")
+    .eq("is_active", true)
+    .single();
+
+  const { data: teacherProfile } = appUser
+    ? await admin
+        .from("teachers")
+        .select("id")
+        .eq("user_id", appUser.id)
+        .single()
+    : { data: null };
+
+  const { data: teacherClasses } = teacherProfile
+    ? await admin
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", teacherProfile.id)
+    : { data: null };
+
+  return Array.from(
+    new Set(
+      (teacherClasses ?? [])
+        .map((item) => String(item.class_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+}
+
 export default async function StudentDashboardPage({
   searchParams,
 }: {
@@ -122,14 +159,33 @@ export default async function StudentDashboardPage({
     candidate_number: string | null;
     student_code: string | null;
     registration_status?: string | null;
+    class_id?: string | null;
   }[] = [];
 
   if (isTeacherPreview) {
-    const { data: previewStudentList, error: previewStudentsError } = await supabase
+    const admin = createAdminClient();
+    const teacherClassIds =
+      authRole === "admin" ? [] : await getTeacherClassIds(admin, authUser.email);
+
+    let previewStudentQuery = supabase
       .from("students")
-      .select("id, first_name, last_name, candidate_number, student_code, registration_status")
+      .select("id, first_name, last_name, candidate_number, student_code, registration_status, class_id")
       .order("last_name", { ascending: true })
       .order("first_name", { ascending: true });
+
+    if (authRole !== "admin") {
+      if (teacherClassIds.length > 0) {
+        previewStudentQuery = previewStudentQuery.in("class_id", teacherClassIds);
+      } else {
+        previewStudentQuery = previewStudentQuery.eq(
+          "class_id",
+          "00000000-0000-0000-0000-000000000000"
+        );
+      }
+    }
+
+    const { data: previewStudentList, error: previewStudentsError } =
+      await previewStudentQuery;
 
     previewStudents = previewStudentList ?? [];
 

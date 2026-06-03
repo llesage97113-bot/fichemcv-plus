@@ -5,6 +5,7 @@ import SectionEditor from "@/components/SectionEditor";
 import SubmitFicheButton from "@/components/SubmitFicheButton";
 import AppNavigation from "@/components/AppNavigation";
 import { requireAnyRole } from "@/lib/auth/requireUser";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
@@ -102,6 +103,42 @@ function getStudentStatusHelp(status: string | null) {
   }
 }
 
+async function getTeacherClassIds(
+  admin: ReturnType<typeof createAdminClient>,
+  teacherEmail: string | null | undefined
+) {
+  const { data: appUser } = await admin
+    .from("app_users")
+    .select("id")
+    .eq("email", teacherEmail ?? "")
+    .eq("role", "teacher")
+    .eq("is_active", true)
+    .single();
+
+  const { data: teacherProfile } = appUser
+    ? await admin
+        .from("teachers")
+        .select("id")
+        .eq("user_id", appUser.id)
+        .single()
+    : { data: null };
+
+  const { data: teacherClasses } = teacherProfile
+    ? await admin
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", teacherProfile.id)
+    : { data: null };
+
+  return Array.from(
+    new Set(
+      (teacherClasses ?? [])
+        .map((item) => String(item.class_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+}
+
 export default async function StudentFicheDetailPage({
   params,
 }: {
@@ -118,6 +155,20 @@ export default async function StudentFicheDetailPage({
     .from("teacher_fiche_dashboard")
     .select("*")
     .eq("fiche_id", id);
+
+  if (isTeacherPreview && authRole !== "admin") {
+    const admin = createAdminClient();
+    const teacherClassIds = await getTeacherClassIds(admin, authUser.email);
+
+    if (teacherClassIds.length > 0) {
+      ficheQuery = ficheQuery.in("class_id", teacherClassIds);
+    } else {
+      ficheQuery = ficheQuery.eq(
+        "class_id",
+        "00000000-0000-0000-0000-000000000000"
+      );
+    }
+  }
 
   if (!isTeacherPreview) {
     const { data: appUser, error: appUserError } = await supabase
