@@ -259,43 +259,36 @@ export default async function StudentDashboardPage({
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
       <AppNavigation maxWidth="5xl" />
       <section className="mx-auto max-w-5xl">
-        <header className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm sm:p-6">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <p className="mb-2 text-sm uppercase tracking-wide text-sky-300">
-                FicheMCV+ Élève
-              </p>
+        {!isTeacherPreview && (
+          <header className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm sm:p-6">
+            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="mb-2 text-sm uppercase tracking-wide text-sky-300">
+                  FicheMCV+ Élève
+                </p>
 
-              <h1 className="text-3xl font-bold sm:text-4xl">
-                Bonjour {studentFullName}
-              </h1>
-            </div>
+                <h1 className="text-3xl font-bold sm:text-4xl">
+                  Bonjour {studentFullName}
+                </h1>
+              </div>
 
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href="/eleve/profil"
-                className="inline-flex items-center justify-center rounded-lg border border-sky-500/40 px-3 py-2 text-sm text-sky-300 hover:bg-sky-950/40 hover:text-sky-200"
-              >
-                Voir mon profil
-              </Link>
-
-              {isTeacherPreview && (
-                <a
-                  href="/"
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+              <div className="flex flex-wrap gap-2">
+                <Link
+                  href="/eleve/profil"
+                  className="inline-flex items-center justify-center rounded-lg border border-sky-500/40 px-3 py-2 text-sm text-sky-300 hover:bg-sky-950/40 hover:text-sky-200"
                 >
-                  Retour espace professeur
-                </a>
-              )}
+                  Voir mon profil
+                </Link>
+              </div>
             </div>
-          </div>
 
-          <p className="text-sm leading-6 text-slate-400 sm:text-base">
-            Retrouve ici tes fiches, leur état d’avancement et les actions à réaliser.
-            Les fiches soumises, validées, verrouillées ou archivées restent consultables
-            en lecture seule.
-          </p>
-        </header>
+            <p className="text-sm leading-6 text-slate-400 sm:text-base">
+              Retrouve ici tes fiches, leur état d’avancement et les actions à réaliser.
+              Les fiches soumises, validées, verrouillées ou archivées restent consultables
+              en lecture seule.
+            </p>
+          </header>
+        )}
           {isTeacherPreview && previewStudents.length > 0 && (
             <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
               <div className="mb-5">
@@ -419,20 +412,37 @@ export default async function StudentDashboardPage({
         )}
 
         {student?.registration_status !== "pending" && student && (
-          <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm">
+          <section className={`mb-6 rounded-2xl border p-5 shadow-sm ${
+            isTeacherPreview
+              ? "border-emerald-500/30 bg-emerald-500/10"
+              : "border-slate-800 bg-slate-900/60"
+          }`}>
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-wide text-sky-300">
-                  Profil élève
+                <p className={`text-sm uppercase tracking-wide ${
+                  isTeacherPreview ? "text-emerald-300" : "text-sky-300"
+                }`}>
+                  Identité
                 </p>
-                <h2 className="mt-1 text-2xl font-semibold text-slate-100">
+                <h2 className="mt-1 text-3xl font-bold text-slate-100 sm:text-4xl">
                   {studentFullName}
                 </h2>
               </div>
 
-              <span className="rounded-full border border-sky-500/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
-                {isTeacherPreview ? "Prévisualisation professeur" : "Élève connecté"}
-              </span>
+              {isTeacherPreview && (
+                <a
+                  href="/"
+                  className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100"
+                >
+                  Retour espace professeur
+                </a>
+              )}
+
+              {!isTeacherPreview && (
+                <span className="rounded-full border border-sky-500/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
+                  Élève connecté
+                </span>
+              )}
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">

@@ -220,19 +220,6 @@ export default async function AdminPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 lg:col-span-2">
-            <h2 className="text-lg font-semibold text-slate-100">
-              Prochaines fonctions admin
-            </h2>
-
-            <ul className="mt-4 space-y-3 text-sm leading-6 text-slate-400">
-              <li>Créer un professeur depuis l’interface.</li>
-              <li>Activer ou désactiver un professeur.</li>
-              <li>Rattacher un professeur à une ou plusieurs classes.</li>
-              <li>Gérer les classes et les codes d’inscription.</li>
-              <li>Superviser les comptes élèves et les exports.</li>
-            </ul>
-          </div>
         </section>
       </section>
     </main>
