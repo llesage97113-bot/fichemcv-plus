@@ -104,12 +104,6 @@ export default async function StudentProfilePage() {
           </div>
         )}
 
-        {student && (
-          <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-xs text-slate-300">
-            DEBUG profil — rôle auth : {String(authRole)} — preview : {String(isTeacherPreview)}
-          </div>
-        )}
-
         {student && !isTeacherPreview && (
           <StudentPasswordChangeForm />
         )}
