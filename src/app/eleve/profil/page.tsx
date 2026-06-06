@@ -1,5 +1,6 @@
 import Link from "next/link";
 import AppNavigation from "@/components/AppNavigation";
+import StudentPasswordChangeForm from "@/components/StudentPasswordChangeForm";
 import { requireAnyRole } from "@/lib/auth/requireUser";
 import { createClient } from "@/lib/supabase/server";
 
@@ -101,6 +102,16 @@ export default async function StudentProfilePage() {
             <p className="font-semibold text-yellow-300">Profil introuvable</p>
             <p className="mt-2 text-yellow-100">{studentErrorMessage}</p>
           </div>
+        )}
+
+        {student && (
+          <div className="mb-4 rounded-xl border border-slate-700 bg-slate-950/70 p-3 text-xs text-slate-300">
+            DEBUG profil — rôle auth : {String(authRole)} — preview : {String(isTeacherPreview)}
+          </div>
+        )}
+
+        {student && !isTeacherPreview && (
+          <StudentPasswordChangeForm />
         )}
 
         {student && (
