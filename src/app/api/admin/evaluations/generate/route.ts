@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
-async function requireTeacher() {
+async function requireTeacherOrAdmin() {
   const supabase = await createClient();
 
   const {
@@ -10,11 +10,56 @@ async function requireTeacher() {
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !user || user.app_metadata?.role !== "professeur") {
+  const role = user?.app_metadata?.role;
+
+  if (error || !user || (role !== "professeur" && role !== "admin")) {
     return null;
   }
 
   return user;
+}
+
+async function getTeacherClassIds(
+  admin: ReturnType<typeof createAdminClient>,
+  teacherEmail: string | null | undefined
+) {
+  const { data: appUser } = await admin
+    .from("app_users")
+    .select("id")
+    .eq("email", teacherEmail ?? "")
+    .eq("role", "teacher")
+    .eq("is_active", true)
+    .single();
+
+  const { data: teacherProfile } = appUser
+    ? await admin
+        .from("teachers")
+        .select("id")
+        .eq("user_id", appUser.id)
+        .single()
+    : { data: null };
+
+  const { data: teacherClasses } = teacherProfile
+    ? await admin
+        .from("class_teachers")
+        .select("class_id")
+        .eq("teacher_id", teacherProfile.id)
+    : { data: null };
+
+  return Array.from(
+    new Set(
+      (teacherClasses ?? [])
+        .map((item) => String(item.class_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+}
+
+function isTeacherAllowedForClass(
+  teacherClassIds: string[],
+  classId: string | null | undefined
+) {
+  return Boolean(classId) && teacherClassIds.includes(String(classId));
 }
 
 function getSectionText(section: Record<string, unknown>) {
@@ -116,11 +161,11 @@ function buildLocalPedagogicalReport({
 }
 
 export async function POST(request: Request) {
-  const teacher = await requireTeacher();
+  const teacher = await requireTeacherOrAdmin();
 
   if (!teacher) {
     return NextResponse.json(
-      { error: "Accès réservé au professeur." },
+      { error: "Accès réservé au professeur ou à l’administrateur." },
       { status: 403 }
     );
   }
@@ -136,16 +181,20 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
+  const authRole = teacher.app_metadata?.role;
 
   const { data: teacherAppUser, error: teacherAppUserError } = await admin
     .from("app_users")
     .select("id, email, role, is_active")
     .eq("email", teacher.email ?? "")
     .eq("is_active", true)
-    .eq("role", "teacher")
     .maybeSingle();
 
-  if (teacherAppUserError || !teacherAppUser) {
+  if (
+    teacherAppUserError ||
+    !teacherAppUser ||
+    (authRole === "professeur" && teacherAppUser.role !== "teacher")
+  ) {
     return NextResponse.json(
       {
         error:
@@ -169,6 +218,20 @@ export async function POST(request: Request) {
       { error: ficheError?.message ?? "Fiche introuvable." },
       { status: 404 }
     );
+  }
+
+  if (authRole !== "admin") {
+    const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
+
+    if (!isTeacherAllowedForClass(teacherClassIds, fiche.class_id)) {
+      return NextResponse.json(
+        {
+          error:
+            "Accès refusé : cette fiche n’appartient pas à une classe rattachée à ce professeur.",
+        },
+        { status: 403 }
+      );
+    }
   }
 
   const { data: sections, error: sectionsError } = await admin
@@ -263,11 +326,11 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const teacher = await requireTeacher();
+  const teacher = await requireTeacherOrAdmin();
 
   if (!teacher) {
     return NextResponse.json(
-      { error: "Accès réservé au professeur." },
+      { error: "Accès réservé au professeur ou à l’administrateur." },
       { status: 403 }
     );
   }
@@ -286,7 +349,7 @@ export async function GET(request: Request) {
 
   const { data: fiche, error: ficheError } = await admin
     .from("fiches")
-    .select("id, student_id, epreuve")
+    .select("id, student_id, class_id, epreuve")
     .eq("id", ficheId)
     .single();
 
@@ -295,6 +358,20 @@ export async function GET(request: Request) {
       { error: ficheError?.message ?? "Fiche introuvable." },
       { status: 404 }
     );
+  }
+
+  if (teacher.app_metadata?.role !== "admin") {
+    const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
+
+    if (!isTeacherAllowedForClass(teacherClassIds, fiche.class_id)) {
+      return NextResponse.json(
+        {
+          error:
+            "Accès refusé : cette fiche n’appartient pas à une classe rattachée à ce professeur.",
+        },
+        { status: 403 }
+      );
+    }
   }
 
   const { data: evaluations, error: evaluationsError } = await admin
