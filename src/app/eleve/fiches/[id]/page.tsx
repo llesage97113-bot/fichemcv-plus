@@ -4,8 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import SectionEditor from "@/components/SectionEditor";
 import SubmitFicheButton from "@/components/SubmitFicheButton";
 import AppNavigation from "@/components/AppNavigation";
-import { requireAnyRole } from "@/lib/auth/requireUser";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/auth/requireUser";
 
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
@@ -103,51 +102,13 @@ function getStudentStatusHelp(status: string | null) {
   }
 }
 
-async function getTeacherClassIds(
-  admin: ReturnType<typeof createAdminClient>,
-  teacherEmail: string | null | undefined
-) {
-  const { data: appUser } = await admin
-    .from("app_users")
-    .select("id")
-    .eq("email", teacherEmail ?? "")
-    .eq("role", "teacher")
-    .eq("is_active", true)
-    .single();
-
-  const { data: teacherProfile } = appUser
-    ? await admin
-        .from("teachers")
-        .select("id")
-        .eq("user_id", appUser.id)
-        .single()
-    : { data: null };
-
-  const { data: teacherClasses } = teacherProfile
-    ? await admin
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", teacherProfile.id)
-    : { data: null };
-
-  return Array.from(
-    new Set(
-      (teacherClasses ?? [])
-        .map((item) => String(item.class_id ?? ""))
-        .filter(Boolean)
-    )
-  );
-}
-
 export default async function StudentFicheDetailPage({
   params,
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const authUser = await requireAnyRole(["professeur", "eleve"]);
+  const authUser = await requireRole("eleve");
   const supabase = await createClient();
-  const authRole = authUser.app_metadata?.role;
-  const isTeacherPreview = authRole === "professeur" || authRole === "admin";
 
   const { id } = await params;
 
@@ -156,45 +117,29 @@ export default async function StudentFicheDetailPage({
     .select("*")
     .eq("fiche_id", id);
 
-  if (isTeacherPreview && authRole !== "admin") {
-    const admin = createAdminClient();
-    const teacherClassIds = await getTeacherClassIds(admin, authUser.email);
+  const { data: appUser, error: appUserError } = await supabase
+    .from("app_users")
+    .select("id, email, role, is_active")
+    .eq("email", authUser.email ?? "")
+    .eq("role", "student")
+    .eq("is_active", true)
+    .single();
 
-    if (teacherClassIds.length > 0) {
-      ficheQuery = ficheQuery.in("class_id", teacherClassIds);
-    } else {
-      ficheQuery = ficheQuery.eq(
-        "class_id",
-        "00000000-0000-0000-0000-000000000000"
-      );
-    }
+  if (appUserError || !appUser) {
+    notFound();
   }
 
-  if (!isTeacherPreview) {
-    const { data: appUser, error: appUserError } = await supabase
-      .from("app_users")
-      .select("id, email, role, is_active")
-      .eq("email", authUser.email ?? "")
-      .eq("role", "student")
-      .eq("is_active", true)
-      .single();
+  const { data: connectedStudent, error: connectedStudentError } = await supabase
+    .from("students")
+    .select("id")
+    .eq("user_id", appUser.id)
+    .single();
 
-    if (appUserError || !appUser) {
-      notFound();
-    }
-
-    const { data: connectedStudent, error: connectedStudentError } = await supabase
-      .from("students")
-      .select("id")
-      .eq("user_id", appUser.id)
-      .single();
-
-    if (connectedStudentError || !connectedStudent) {
-      notFound();
-    }
-
-    ficheQuery = ficheQuery.eq("student_id", connectedStudent.id);
+  if (connectedStudentError || !connectedStudent) {
+    notFound();
   }
+
+  ficheQuery = ficheQuery.eq("student_id", connectedStudent.id);
 
   const { data: fiche, error: ficheError } = await ficheQuery.single();
 
@@ -226,34 +171,13 @@ export default async function StudentFicheDetailPage({
           href="/eleve"
           className="mb-6 inline-flex items-center rounded-lg border border-slate-800 px-3 py-2 text-sm text-sky-300 hover:bg-slate-900 hover:text-sky-200"
         >
-          {isTeacherPreview
-            ? "← Retour à la prévisualisation élève"
-            : "← Retour à mon espace élève"}
+          ← Retour à mon espace élève
         </Link>
 
         <header className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm sm:p-6">
           <p className="mb-3 text-sm uppercase tracking-wide text-sky-300">
             FicheMCV+ Élève
           </p>
-
-          {isTeacherPreview && (
-            <div className="mb-5 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-300">
-                Prévisualisation professeur
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-100">
-                Élève consulté :{" "}
-                <span className="font-semibold">
-                  {fiche.first_name} {fiche.last_name}
-                </span>
-              </p>
-              {fiche.class_name && (
-                <p className="mt-1 text-sm text-slate-300">
-                  Classe : <span className="font-medium">{fiche.class_name}</span>
-                </p>
-              )}
-            </div>
-          )}
 
           <div className="mb-3 flex flex-wrap gap-2">
             <span className="rounded-full bg-sky-500/10 px-3 py-1 text-xs font-semibold text-sky-300">

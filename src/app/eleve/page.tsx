@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import AppNavigation from "@/components/AppNavigation";
-import { requireAnyRole } from "@/lib/auth/requireUser";
-import { createAdminClient } from "@/lib/supabase/admin";
+import { requireRole } from "@/lib/auth/requireUser";
 
 function getProgressClasses(score: number) {
   if (score >= 80) {
@@ -101,133 +100,34 @@ function getStatusHelp(status: string | null) {
   }
 }
 
-async function getTeacherClassIds(
-  admin: ReturnType<typeof createAdminClient>,
-  teacherEmail: string | null | undefined
-) {
-  const { data: appUser } = await admin
-    .from("app_users")
-    .select("id")
-    .eq("email", teacherEmail ?? "")
-    .eq("role", "teacher")
-    .eq("is_active", true)
-    .single();
-
-  const { data: teacherProfile } = appUser
-    ? await admin
-        .from("teachers")
-        .select("id")
-        .eq("user_id", appUser.id)
-        .single()
-    : { data: null };
-
-  const { data: teacherClasses } = teacherProfile
-    ? await admin
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", teacherProfile.id)
-    : { data: null };
-
-  return Array.from(
-    new Set(
-      (teacherClasses ?? [])
-        .map((item) => String(item.class_id ?? ""))
-        .filter(Boolean)
-    )
-  );
-}
-
-export default async function StudentDashboardPage({
-  searchParams,
-}: {
-  searchParams?: Promise<{ studentId?: string }>;
-}) {
-  const resolvedSearchParams = await searchParams;
-  const selectedStudentId = resolvedSearchParams?.studentId ?? "";
-
-  const authUser = await requireAnyRole(["professeur", "eleve"]);
+export default async function StudentDashboardPage() {
+  const authUser = await requireRole("eleve");
   const supabase = await createClient();
-  const authRole = authUser.app_metadata?.role;
-  const isTeacherPreview = authRole === "professeur" || authRole === "admin";
 
   let student = null;
   let studentErrorMessage = "";
-  let previewStudents: {
-    id: string;
-    first_name: string | null;
-    last_name: string | null;
-    candidate_number: string | null;
-    student_code: string | null;
-    registration_status?: string | null;
-    class_id?: string | null;
-  }[] = [];
 
-  if (isTeacherPreview) {
-    const admin = createAdminClient();
-    const teacherClassIds =
-      authRole === "admin" ? [] : await getTeacherClassIds(admin, authUser.email);
+  const { data: appUser, error: appUserError } = await supabase
+    .from("app_users")
+    .select("id, email, role, is_active")
+    .eq("email", authUser.email ?? "")
+    .eq("role", "student")
+    .eq("is_active", true)
+    .single();
 
-    let previewStudentQuery = supabase
-      .from("students")
-      .select("id, first_name, last_name, candidate_number, student_code, registration_status, class_id")
-      .order("last_name", { ascending: true })
-      .order("first_name", { ascending: true });
-
-    if (authRole !== "admin") {
-      if (teacherClassIds.length > 0) {
-        previewStudentQuery = previewStudentQuery.in("class_id", teacherClassIds);
-      } else {
-        previewStudentQuery = previewStudentQuery.eq(
-          "class_id",
-          "00000000-0000-0000-0000-000000000000"
-        );
-      }
-    }
-
-    const { data: previewStudentList, error: previewStudentsError } =
-      await previewStudentQuery;
-
-    previewStudents = previewStudentList ?? [];
-
-    if (previewStudentsError || previewStudents.length === 0) {
-      studentErrorMessage = "Aucun élève de prévisualisation n’a été trouvé.";
-    } else {
-      const validatedPreviewStudents = previewStudents.filter(
-        (previewStudent) =>
-          previewStudent.registration_status === "validated" ||
-          !previewStudent.registration_status
-      );
-
-      student =
-        validatedPreviewStudents.find(
-          (previewStudent) => previewStudent.id === selectedStudentId
-        ) ??
-        validatedPreviewStudents[0] ??
-        previewStudents[0];
-    }
+  if (appUserError || !appUser) {
+    studentErrorMessage = "Aucun profil élève actif n’est associé à ce compte.";
   } else {
-    const { data: appUser, error: appUserError } = await supabase
-      .from("app_users")
-      .select("id, email, role, is_active")
-      .eq("email", authUser.email ?? "")
-      .eq("role", "student")
-      .eq("is_active", true)
+    const { data: connectedStudent, error: connectedStudentError } = await supabase
+      .from("students")
+      .select("id, first_name, last_name, candidate_number, student_code, registration_status")
+      .eq("user_id", appUser.id)
       .single();
 
-    if (appUserError || !appUser) {
-      studentErrorMessage = "Aucun profil élève actif n’est associé à ce compte.";
-    } else {
-      const { data: connectedStudent, error: connectedStudentError } = await supabase
-        .from("students")
-        .select("id, first_name, last_name, candidate_number, student_code, registration_status")
-        .eq("user_id", appUser.id)
-        .single();
+    student = connectedStudent;
 
-      student = connectedStudent;
-
-      if (connectedStudentError || !connectedStudent) {
-        studentErrorMessage = "Aucune fiche élève n’est rattachée à ce compte.";
-      }
+    if (connectedStudentError || !connectedStudent) {
+      studentErrorMessage = "Aucune fiche élève n’est rattachée à ce compte.";
     }
   }
 
@@ -259,146 +159,36 @@ export default async function StudentDashboardPage({
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
       <AppNavigation maxWidth="5xl" />
       <section className="mx-auto max-w-5xl">
-        {!isTeacherPreview && (
-          <header className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm sm:p-6">
-            <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="mb-2 text-sm uppercase tracking-wide text-sky-300">
-                  FicheMCV+ Élève
-                </p>
+        <header className="mb-8 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm sm:p-6">
+          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <p className="mb-2 text-sm uppercase tracking-wide text-sky-300">
+                FicheMCV+ Élève
+              </p>
 
-                <h1 className="text-3xl font-bold sm:text-4xl">
-                  Bonjour {studentFullName}
-                </h1>
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Link
-                  href="/eleve/profil"
-                  className="inline-flex items-center justify-center rounded-lg border border-sky-500/40 px-3 py-2 text-sm text-sky-300 hover:bg-sky-950/40 hover:text-sky-200"
-                >
-                  Voir mon profil
-                </Link>
-              </div>
+              <h1 className="text-3xl font-bold sm:text-4xl">
+                Bonjour {studentFullName}
+              </h1>
             </div>
 
-            <p className="text-sm leading-6 text-slate-400 sm:text-base">
-              Retrouve ici tes fiches, leur état d’avancement et les actions à réaliser.
-              Les fiches soumises, validées, verrouillées ou archivées restent consultables
-              en lecture seule.
-            </p>
-          </header>
-        )}
-          {isTeacherPreview && previewStudents.length > 0 && (
-            <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
-              <div className="mb-5">
-                <h2 className="text-lg font-semibold text-slate-100">
-                  Prévisualisation professeur
-                </h2>
-                <p className="text-sm text-slate-400">
-                  Choisis un élève validé pour afficher son espace. Les inscriptions en attente restent visibles, mais ne sont pas encore prévisualisables.
-                </p>
-              </div>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href="/eleve/profil"
+                className="inline-flex items-center justify-center rounded-lg border border-sky-500/40 px-3 py-2 text-sm text-sky-300 hover:bg-sky-950/40 hover:text-sky-200"
+              >
+                Voir mon profil
+              </Link>
+            </div>
+          </div>
 
-              <div className="space-y-5">
-                <div>
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-emerald-200">
-                      Élèves validés
-                    </h3>
-                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                      {
-                        previewStudents.filter(
-                          (previewStudent) =>
-                            previewStudent.registration_status === "validated" ||
-                            !previewStudent.registration_status
-                        ).length
-                      }
-                    </span>
-                  </div>
+          <p className="text-sm leading-6 text-slate-400 sm:text-base">
+            Retrouve ici tes fiches, leur état d’avancement et les actions à réaliser.
+            Les fiches soumises, validées, verrouillées ou archivées restent consultables
+            en lecture seule.
+          </p>
+        </header>
 
-                  <div className="flex flex-wrap gap-2">
-                    {previewStudents
-                      .filter(
-                        (previewStudent) =>
-                          previewStudent.registration_status === "validated" ||
-                          !previewStudent.registration_status
-                      )
-                      .map((previewStudent) => {
-                        const isSelected = previewStudent.id === student?.id;
-
-                        return (
-                          <Link
-                            key={previewStudent.id}
-                            href={`/eleve?studentId=${previewStudent.id}`}
-                            className={`rounded-full border px-3 py-1 text-xs font-medium transition ${
-                              isSelected
-                                ? "border-sky-400 bg-sky-500/20 text-sky-100"
-                                : "border-slate-700 bg-slate-950/60 text-slate-300 hover:border-sky-500/50 hover:text-sky-200"
-                            }`}
-                          >
-                            {previewStudent.first_name} {previewStudent.last_name}
-                          </Link>
-                        );
-                      })}
-
-                    {previewStudents.filter(
-                      (previewStudent) =>
-                        previewStudent.registration_status === "validated" ||
-                        !previewStudent.registration_status
-                    ).length === 0 && (
-                      <p className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm text-slate-500">
-                        Aucun élève validé pour le moment.
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div>
-                  <div className="mb-2 flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-amber-200">
-                      Inscriptions en attente
-                    </h3>
-                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
-                      {
-                        previewStudents.filter(
-                          (previewStudent) =>
-                            previewStudent.registration_status === "pending"
-                        ).length
-                      }
-                    </span>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {previewStudents
-                      .filter(
-                        (previewStudent) =>
-                          previewStudent.registration_status === "pending"
-                      )
-                      .map((previewStudent) => (
-                        <span
-                          key={previewStudent.id}
-                          className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200/80"
-                        >
-                          {previewStudent.first_name} {previewStudent.last_name} · en attente
-                        </span>
-                      ))}
-
-                    {previewStudents.filter(
-                      (previewStudent) =>
-                        previewStudent.registration_status === "pending"
-                    ).length === 0 && (
-                      <p className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm text-slate-500">
-                        Aucune inscription en attente.
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-        {student?.registration_status === "pending" && !isTeacherPreview && (
+        {student?.registration_status === "pending" && (
           <section className="mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-5 shadow-sm">
             <p className="text-lg font-semibold text-amber-100">
               Inscription en attente de validation
@@ -412,16 +202,10 @@ export default async function StudentDashboardPage({
         )}
 
         {student?.registration_status !== "pending" && student && (
-          <section className={`mb-6 rounded-2xl border p-5 shadow-sm ${
-            isTeacherPreview
-              ? "border-emerald-500/30 bg-emerald-500/10"
-              : "border-slate-800 bg-slate-900/60"
-          }`}>
+          <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm">
             <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className={`text-sm uppercase tracking-wide ${
-                  isTeacherPreview ? "text-emerald-300" : "text-sky-300"
-                }`}>
+                <p className="text-sm uppercase tracking-wide text-sky-300">
                   Identité
                 </p>
                 <h2 className="mt-1 text-3xl font-bold text-slate-100 sm:text-4xl">
@@ -429,20 +213,9 @@ export default async function StudentDashboardPage({
                 </h2>
               </div>
 
-              {isTeacherPreview && (
-                <a
-                  href="/"
-                  className="inline-flex items-center justify-center rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-300 hover:bg-slate-800 hover:text-slate-100"
-                >
-                  Retour espace professeur
-                </a>
-              )}
-
-              {!isTeacherPreview && (
-                <span className="rounded-full border border-sky-500/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
-                  Élève connecté
-                </span>
-              )}
+              <span className="rounded-full border border-sky-500/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
+                Élève connecté
+              </span>
             </div>
 
             <div className="grid gap-3 sm:grid-cols-3">

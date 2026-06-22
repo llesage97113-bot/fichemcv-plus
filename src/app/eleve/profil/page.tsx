@@ -1,59 +1,40 @@
 import Link from "next/link";
 import AppNavigation from "@/components/AppNavigation";
 import StudentPasswordChangeForm from "@/components/StudentPasswordChangeForm";
-import { requireAnyRole } from "@/lib/auth/requireUser";
+import { requireRole } from "@/lib/auth/requireUser";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function StudentProfilePage() {
-  const authUser = await requireAnyRole(["professeur", "eleve"]);
+  const authUser = await requireRole("eleve");
   const supabase = await createClient();
-
-  const authRole = authUser.app_metadata?.role;
-  const isTeacherPreview = authRole === "professeur" || authRole === "admin";
 
   let student = null;
   let studentErrorMessage = "";
   let className = "";
   let schoolYear = "";
 
-  if (isTeacherPreview) {
-    const { data: previewStudent, error: previewStudentError } = await supabase
-      .from("students")
-      .select("id, first_name, last_name, candidate_number, student_code, registration_status")
-      .order("last_name", { ascending: true })
-      .order("first_name", { ascending: true })
-      .limit(1)
-      .single();
+  const { data: appUser, error: appUserError } = await supabase
+    .from("app_users")
+    .select("id, email, role, is_active")
+    .eq("email", authUser.email ?? "")
+    .eq("role", "student")
+    .eq("is_active", true)
+    .single();
 
-    student = previewStudent;
-
-    if (previewStudentError || !previewStudent) {
-      studentErrorMessage = "Aucun élève de prévisualisation n’a été trouvé.";
-    }
+  if (appUserError || !appUser) {
+    studentErrorMessage = "Aucun profil élève actif n’est associé à ce compte.";
   } else {
-    const { data: appUser, error: appUserError } = await supabase
-      .from("app_users")
-      .select("id, email, role, is_active")
-      .eq("email", authUser.email ?? "")
-      .eq("role", "student")
-      .eq("is_active", true)
-      .single();
+    const { data: connectedStudent, error: connectedStudentError } =
+      await supabase
+        .from("students")
+        .select("id, first_name, last_name, candidate_number, student_code, registration_status")
+        .eq("user_id", appUser.id)
+        .single();
 
-    if (appUserError || !appUser) {
-      studentErrorMessage = "Aucun profil élève actif n’est associé à ce compte.";
-    } else {
-      const { data: connectedStudent, error: connectedStudentError } =
-        await supabase
-          .from("students")
-          .select("id, first_name, last_name, candidate_number, student_code, registration_status")
-          .eq("user_id", appUser.id)
-          .single();
+    student = connectedStudent;
 
-      student = connectedStudent;
-
-      if (connectedStudentError || !connectedStudent) {
-        studentErrorMessage = "Aucune fiche élève n’est rattachée à ce compte.";
-      }
+    if (connectedStudentError || !connectedStudent) {
+      studentErrorMessage = "Aucune fiche élève n’est rattachée à ce compte.";
     }
   }
 
@@ -104,9 +85,7 @@ export default async function StudentProfilePage() {
           </div>
         )}
 
-        {student && !isTeacherPreview && (
-          <StudentPasswordChangeForm />
-        )}
+        {student && <StudentPasswordChangeForm />}
 
         {student && (
           <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-sm">
@@ -121,7 +100,7 @@ export default async function StudentProfilePage() {
               </div>
 
               <span className="rounded-full border border-sky-500/40 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-sky-300">
-                {isTeacherPreview ? "Prévisualisation professeur" : "Élève connecté"}
+                Élève connecté
               </span>
 
               <span
