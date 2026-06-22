@@ -22,82 +22,38 @@ type FicheDashboardItem = {
   latest_analysis_status?: string | null;
   latest_analysis_created_at?: string | null;
 };
+
 type TeacherDashboardProps = {
   fiches: FicheDashboardItem[];
 };
 
-function getPriorityActionLabel(statut: string) {
-  switch (statut) {
-    case "soumise":
-      return "Action attendue : ouvrir la fiche pour demander une correction.";
-    case "corrigee":
-      return "Action attendue : ouvrir la fiche pour valider la fiche.";
-    case "validee":
-      return "Action attendue : ouvrir la fiche pour verrouiller la fiche.";
-    case "verrouillee":
-      return "Action attendue : ouvrir la fiche pour archiver la fiche.";
-    default:
-      return "Action attendue : consulter la fiche.";
-  }
+type StatusGroup = "all" | "to_process" | "waiting_student" | "finalized" | "drafts";
+
+const TO_PROCESS_STATUSES = ["soumise", "corrigee"];
+const WAITING_STUDENT_STATUSES = ["a_corriger"];
+const FINALIZED_STATUSES = ["validee", "verrouillee", "archivee"];
+const DRAFT_STATUSES = ["non_commencee", "brouillon"];
+
+function normalizeClassName(value: string | null | undefined) {
+  return String(value ?? "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "");
 }
 
-function getPriorityLabel(statut: string) {
-  switch (statut) {
-    case "soumise":
-      return "À corriger";
-    case "corrigee":
-      return "À valider";
-    case "validee":
-      return "À verrouiller";
-    case "verrouillee":
-      return "À archiver";
-    default:
-      return statut;
-  }
+function getStudentName(fiche: FicheDashboardItem) {
+  return `${fiche.first_name ?? ""} ${fiche.last_name ?? ""}`.trim() || "Élève sans nom";
 }
 
-function getProgressClasses(score: number) {
-  if (score >= 80) {
-    return {
-      text: "text-emerald-300",
-      bar: "bg-emerald-400",
-      track: "bg-slate-800",
-    };
-  }
-
-  if (score >= 55) {
-    return {
-      text: "text-sky-300",
-      bar: "bg-sky-400",
-      track: "bg-slate-800",
-    };
-  }
-
-  if (score > 0) {
-    return {
-      text: "text-amber-300",
-      bar: "bg-amber-400",
-      track: "bg-slate-800",
-    };
-  }
-
-  return {
-    text: "text-slate-400",
-    bar: "bg-slate-500",
-    track: "bg-slate-800",
-  };
-}
-
-function getCompletionBucket(score: number) {
-  if (score >= 80) return "avancee";
-  if (score >= 55) return "intermediaire";
-  if (score > 0) return "fragile";
-  return "vide";
+function getLatestActivity(fiche: FicheDashboardItem) {
+  return [fiche.updated_at, fiche.submitted_at, fiche.validated_at]
+    .filter((value): value is string => Boolean(value))
+    .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null;
 }
 
 function formatActivityDate(value: string | null) {
   if (!value) {
-    return "aucune activité";
+    return "Aucune activité";
   }
 
   return new Intl.DateTimeFormat("fr-FR", {
@@ -109,31 +65,39 @@ function formatActivityDate(value: string | null) {
   }).format(new Date(value));
 }
 
-function isTeacherActionStatus(status: string | null | undefined) {
-  return ["soumise", "corrigee", "validee", "verrouillee"].includes(status ?? "");
+function isInGroup(status: string | null | undefined, group: StatusGroup) {
+  if (group === "all") return true;
+  if (group === "to_process") return TO_PROCESS_STATUSES.includes(status ?? "");
+  if (group === "waiting_student") return WAITING_STUDENT_STATUSES.includes(status ?? "");
+  if (group === "finalized") return FINALIZED_STATUSES.includes(status ?? "");
+  if (group === "drafts") return DRAFT_STATUSES.includes(status ?? "");
+  return false;
 }
 
-function normalizeClassName(value: string | null | undefined) {
-  return String(value ?? "")
-    .trim()
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
+function isStarted(fiche: FicheDashboardItem) {
+  return (
+    Number(fiche.completion_score ?? 0) > 0 ||
+    !DRAFT_STATUSES.includes(fiche.status ?? "") ||
+    Boolean(getLatestActivity(fiche))
+  );
 }
 
-function getTeacherDashboardStatusLabel(status: string | null | undefined) {
+function getStatusLabel(status: string | null | undefined) {
   switch (status) {
+    case "non_commencee":
+      return "Non commencée";
     case "brouillon":
-      return "Brouillon élève";
+      return "Brouillon";
     case "soumise":
-      return "Action professeur";
+      return "Soumise";
     case "a_corriger":
-      return "En attente correction élève";
+      return "À corriger par l’élève";
     case "corrigee":
-      return "Action professeur";
+      return "Corrigée";
     case "validee":
-      return "À verrouiller";
+      return "Validée";
     case "verrouillee":
-      return "À archiver";
+      return "Verrouillée";
     case "archivee":
       return "Archivée";
     default:
@@ -141,58 +105,47 @@ function getTeacherDashboardStatusLabel(status: string | null | undefined) {
   }
 }
 
-function getTeacherDashboardStatusClasses(status: string | null | undefined) {
-  switch (status) {
-    case "soumise":
-    case "corrigee":
-      return "border-red-500/40 bg-red-500/10 text-red-200";
-    case "a_corriger":
-      return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
-    case "validee":
-    case "verrouillee":
-      return "border-amber-500/40 bg-amber-500/10 text-amber-200";
-    case "archivee":
-      return "border-slate-700 bg-slate-900/80 text-slate-400";
-    case "brouillon":
-    default:
-      return "border-slate-700 bg-slate-900/80 text-slate-300";
+function getStatusClasses(status: string | null | undefined) {
+  if (TO_PROCESS_STATUSES.includes(status ?? "")) {
+    return "border-red-500/40 bg-red-500/10 text-red-200";
   }
+
+  if (WAITING_STUDENT_STATUSES.includes(status ?? "")) {
+    return "border-emerald-500/40 bg-emerald-500/10 text-emerald-200";
+  }
+
+  if (FINALIZED_STATUSES.includes(status ?? "")) {
+    return "border-sky-500/40 bg-sky-500/10 text-sky-200";
+  }
+
+  return "border-slate-700 bg-slate-900/80 text-slate-300";
+}
+
+function getProgressClasses(score: number) {
+  if (score >= 80) {
+    return { text: "text-emerald-300", bar: "bg-emerald-400", track: "bg-slate-800" };
+  }
+
+  if (score >= 55) {
+    return { text: "text-sky-300", bar: "bg-sky-400", track: "bg-slate-800" };
+  }
+
+  if (score > 0) {
+    return { text: "text-amber-300", bar: "bg-amber-400", track: "bg-slate-800" };
+  }
+
+  return { text: "text-slate-400", bar: "bg-slate-500", track: "bg-slate-800" };
 }
 
 export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
   const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [epreuveFilter, setEpreuveFilter] = useState("all");
-  const [numeroFicheFilter, setNumeroFicheFilter] = useState("all");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [completionFilter, setCompletionFilter] = useState("all");
-  const [isFicheDetailsOpen, setIsFicheDetailsOpen] = useState(false);
-  const [isCockpitFiltersOpen, setIsCockpitFiltersOpen] = useState(false);
-  const [studentActivityFilter, setStudentActivityFilter] = useState<
-    "all" | "to_restart" | "active"
-  >("all");
-
-  const [isStudentSummaryOpen, setIsStudentSummaryOpen] = useState(false);
-  const [expandedStudentSummaryKey, setExpandedStudentSummaryKey] = useState<string | null>(null);
-  const [isReminderMessageCopied, setIsReminderMessageCopied] = useState(false);
-  const [isQuickPilotOpen, setIsQuickPilotOpen] = useState(false);
-  const [isTeacherActionsOpen, setIsTeacherActionsOpen] = useState(false);
-  const [isWorkflowSummaryOpen, setIsWorkflowSummaryOpen] = useState(false);
-  const [resetPasswordMessage, setResetPasswordMessage] = useState("");
-  const [resetPasswordError, setResetPasswordError] = useState("");
-  const [temporaryPassword, setTemporaryPassword] = useState("");
-  const [isTemporaryPasswordCopied, setIsTemporaryPasswordCopied] = useState(false);
-  const [resetPasswordLoadingId, setResetPasswordLoadingId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusGroup>("all");
 
   const classes = useMemo(() => {
     return Array.from(
       new Set(fiches.map((fiche) => fiche.class_name).filter(Boolean))
-    ).sort();
-  }, [fiches]);
-
-  const statuses = useMemo(() => {
-    return Array.from(
-      new Set(fiches.map((fiche) => fiche.status).filter(Boolean))
     ).sort();
   }, [fiches]);
 
@@ -202,252 +155,172 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     ).sort();
   }, [fiches]);
 
-  const ficheNumbers = useMemo(() => {
-    return Array.from(
-      new Set(
-        fiches
-          .map((fiche) => fiche.numero_fiche)
-          .filter((numero): numero is number => typeof numero === "number")
-      )
-    ).sort((a, b) => a - b);
+  const dashboardStats = useMemo(() => {
+    const studentSummaries = new Map<string, boolean>();
+
+    for (const fiche of fiches) {
+      const studentKey =
+        fiche.student_id ||
+        `${normalizeClassName(fiche.class_name)}-${fiche.last_name ?? ""}-${fiche.first_name ?? ""}`;
+      studentSummaries.set(studentKey, (studentSummaries.get(studentKey) ?? false) || isStarted(fiche));
+    }
+
+    return {
+      toProcess: fiches.filter((fiche) => TO_PROCESS_STATUSES.includes(fiche.status ?? "")).length,
+      waitingStudent: fiches.filter((fiche) =>
+        WAITING_STUDENT_STATUSES.includes(fiche.status ?? "")
+      ).length,
+      finalized: fiches.filter((fiche) => FINALIZED_STATUSES.includes(fiche.status ?? "")).length,
+      inactiveStudents: Array.from(studentSummaries.values()).filter((hasActivity) => !hasActivity)
+        .length,
+    };
   }, [fiches]);
+
+  const priorityFiches = useMemo(() => {
+    return fiches
+      .filter((fiche) => TO_PROCESS_STATUSES.includes(fiche.status ?? ""))
+      .sort((a, b) => {
+        const activityCompare =
+          new Date(getLatestActivity(b) ?? 0).getTime() -
+          new Date(getLatestActivity(a) ?? 0).getTime();
+
+        if (activityCompare !== 0) return activityCompare;
+
+        return getStudentName(a).localeCompare(getStudentName(b));
+      });
+  }, [fiches]);
+
   const filteredFiches = useMemo(() => {
     const normalizedSearch = search.trim().toLowerCase();
 
     return fiches.filter((fiche) => {
-      const score = Number(fiche.completion_score ?? 0);
-
-      const studentName = `${fiche.first_name ?? ""} ${
-        fiche.last_name ?? ""
-      }`.toLowerCase();
-
-      const title = `${fiche.title ?? ""}`.toLowerCase();
+      const searchableText = [
+        fiche.first_name,
+        fiche.last_name,
+        fiche.title,
+        fiche.epreuve,
+        fiche.class_name,
+        fiche.numero_fiche ? `fiche ${fiche.numero_fiche}` : null,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
       const matchesSearch =
-        normalizedSearch.length === 0 ||
-        studentName.includes(normalizedSearch) ||
-        title.includes(normalizedSearch);
+        normalizedSearch.length === 0 || searchableText.includes(normalizedSearch);
 
       const matchesClass =
         classFilter === "all" ||
         normalizeClassName(fiche.class_name) === normalizeClassName(classFilter);
 
-      const matchesEpreuve =
-        epreuveFilter === "all" || fiche.epreuve === epreuveFilter;
+      const matchesEpreuve = epreuveFilter === "all" || fiche.epreuve === epreuveFilter;
+      const matchesStatus = isInGroup(fiche.status, statusFilter);
 
-      const matchesNumeroFiche =
-        numeroFicheFilter === "all" ||
-        String(fiche.numero_fiche) === numeroFicheFilter;
-
-      const matchesStatus =
-        statusFilter === "all" ||
-        (statusFilter === "teacher_actions" && isTeacherActionStatus(fiche.status)) ||
-        fiche.status === statusFilter;
-
-      const matchesCompletion =
-        completionFilter === "all" ||
-        getCompletionBucket(score) === completionFilter;
-
-      return (
-        matchesSearch &&
-        matchesClass &&
-        matchesEpreuve &&
-        matchesNumeroFiche &&
-        matchesStatus &&
-        matchesCompletion
-      );
+      return matchesSearch && matchesClass && matchesEpreuve && matchesStatus;
     });
-  }, [
-    fiches,
-    search,
-    classFilter,
-    epreuveFilter,
-    numeroFicheFilter,
-    statusFilter,
-    completionFilter,
-  ]);
+  }, [classFilter, epreuveFilter, fiches, search, statusFilter]);
 
-  const displayedClasses = useMemo(() => {
-    return Array.from(
-      new Set(filteredFiches.map((fiche) => fiche.class_name ?? "Classe non renseignée"))
-    ).sort();
-  }, [filteredFiches]);
+  const classSummaries = useMemo(() => {
+    const summaries = new Map<
+      string,
+      {
+        className: string;
+        total: number;
+        toProcess: number;
+        waitingStudent: number;
+        finalized: number;
+      }
+    >();
 
-  const dashboardStats = useMemo(() => {
-    return {
-      total: fiches.length,
-      drafts: fiches.filter(
-        (fiche) =>
-          fiche.status === "non_commencee" || fiche.status === "brouillon"
-      ).length,
-      submitted: fiches.filter((fiche) => fiche.status === "soumise").length,
-      correction: fiches.filter((fiche) => fiche.status === "a_corriger").length,
-      final:
-        fiches.filter(
-          (fiche) =>
-            fiche.status === "validee" ||
-            fiche.status === "verrouillee" ||
-            fiche.status === "archivee"
-        ).length,
-    };
-  }, [fiches]);
-  const priorityFiches = useMemo(() => {
-    return filteredFiches.filter((fiche) =>
-      isTeacherActionStatus(fiche.status)
+    for (const fiche of filteredFiches) {
+      const className = fiche.class_name ?? "Classe non renseignée";
+
+      if (!summaries.has(className)) {
+        summaries.set(className, {
+          className,
+          total: 0,
+          toProcess: 0,
+          waitingStudent: 0,
+          finalized: 0,
+        });
+      }
+
+      const summary = summaries.get(className);
+      if (!summary) continue;
+
+      summary.total += 1;
+      if (TO_PROCESS_STATUSES.includes(fiche.status ?? "")) summary.toProcess += 1;
+      if (WAITING_STUDENT_STATUSES.includes(fiche.status ?? "")) summary.waitingStudent += 1;
+      if (FINALIZED_STATUSES.includes(fiche.status ?? "")) summary.finalized += 1;
+    }
+
+    return Array.from(summaries.values()).sort((a, b) =>
+      a.className.localeCompare(b.className)
     );
   }, [filteredFiches]);
-
-  const priorityGroups = useMemo(() => {
-    return [
-      {
-        status: "soumise",
-        title: "À corriger",
-        description: "Fiches soumises par les élèves, en attente d’une première lecture professeur.",
-        items: priorityFiches.filter((fiche) => fiche.status === "soumise"),
-      },
-      {
-        status: "corrigee",
-        title: "À valider",
-        description: "Fiches corrigées par les élèves, en attente de validation.",
-        items: priorityFiches.filter((fiche) => fiche.status === "corrigee"),
-      },
-      {
-        status: "validee",
-        title: "À verrouiller",
-        description: "Fiches validées, prêtes à être verrouillées.",
-        items: priorityFiches.filter((fiche) => fiche.status === "validee"),
-      },
-      {
-        status: "verrouillee",
-        title: "À archiver",
-        description: "Fiches verrouillées, prêtes pour l’archivage final.",
-        items: priorityFiches.filter((fiche) => fiche.status === "verrouillee"),
-      },
-    ];
-  }, [priorityFiches]);
 
   const studentSummaries = useMemo(() => {
     const summaries = new Map<
       string,
       {
         key: string;
-        studentId: string;
         firstName: string;
         lastName: string;
         className: string;
-        totalFiches: number;
-        startedCount: number;
-        notStartedCount: number;
-        submittedCount: number;
-        finalizedCount: number;
+        total: number;
+        started: number;
+        toProcess: number;
+        waitingStudent: number;
+        finalized: number;
         latestActivityAt: string | null;
-        e31Created: number;
-        e31Engaged: number;
-        e32Created: number;
-        e32Engaged: number;
-        fragileCount: number;
-        professorActions: number;
-        analysesToVerify: number;
       }
     >();
 
     for (const fiche of filteredFiches) {
-      const key = `${fiche.class_name ?? "sans-classe"}-${fiche.last_name ?? ""}-${fiche.first_name ?? ""}`;
+      const key =
+        fiche.student_id ||
+        `${fiche.class_name ?? "sans-classe"}-${fiche.last_name ?? ""}-${fiche.first_name ?? ""}`;
 
       if (!summaries.has(key)) {
         summaries.set(key, {
           key,
-          studentId: fiche.student_id,
           firstName: fiche.first_name ?? "",
           lastName: fiche.last_name ?? "",
           className: fiche.class_name ?? "Classe non renseignée",
-          totalFiches: 0,
-          startedCount: 0,
-          notStartedCount: 0,
-          submittedCount: 0,
-          finalizedCount: 0,
+          total: 0,
+          started: 0,
+          toProcess: 0,
+          waitingStudent: 0,
+          finalized: 0,
           latestActivityAt: null,
-          e31Created: 0,
-          e31Engaged: 0,
-          e32Created: 0,
-          e32Engaged: 0,
-          fragileCount: 0,
-          professorActions: 0,
-          analysesToVerify: 0,
         });
       }
 
       const summary = summaries.get(key);
-      if (!summary) {
-        continue;
-      }
+      if (!summary) continue;
 
-      const score = Number(fiche.completion_score ?? 0);
-      const isEngaged =
-        score > 0 ||
-        !["non_commencee", "brouillon"].includes(fiche.status ?? "");
-
-      summary.totalFiches += 1;
-
-      if (isEngaged) {
-        summary.startedCount += 1;
-
-        if (
-          fiche.updated_at &&
-          (!summary.latestActivityAt ||
-            new Date(fiche.updated_at).getTime() >
-              new Date(summary.latestActivityAt).getTime())
-        ) {
-          summary.latestActivityAt = fiche.updated_at;
-        }
-      } else {
-        summary.notStartedCount += 1;
-      }
-
-      if (fiche.status === "soumise" || fiche.status === "corrigee") {
-        summary.submittedCount += 1;
-      }
+      const latestActivity = getLatestActivity(fiche);
+      summary.total += 1;
+      if (isStarted(fiche)) summary.started += 1;
+      if (TO_PROCESS_STATUSES.includes(fiche.status ?? "")) summary.toProcess += 1;
+      if (WAITING_STUDENT_STATUSES.includes(fiche.status ?? "")) summary.waitingStudent += 1;
+      if (FINALIZED_STATUSES.includes(fiche.status ?? "")) summary.finalized += 1;
 
       if (
-        fiche.status === "validee" ||
-        fiche.status === "verrouillee" ||
-        fiche.status === "archivee"
+        latestActivity &&
+        (!summary.latestActivityAt ||
+          new Date(latestActivity).getTime() > new Date(summary.latestActivityAt).getTime())
       ) {
-        summary.finalizedCount += 1;
-      }
-
-      if (fiche.epreuve === "E31") {
-        summary.e31Created += 1;
-        if (isEngaged) {
-          summary.e31Engaged += 1;
-        }
-      }
-
-      if (fiche.epreuve === "E32") {
-        summary.e32Created += 1;
-        if (isEngaged) {
-          summary.e32Engaged += 1;
-        }
-      }
-
-      if (getCompletionBucket(score) === "fragile") {
-        summary.fragileCount += 1;
-      }
-
-      if (isTeacherActionStatus(fiche.status)) {
-        summary.professorActions += 1;
-      }
-
-      if (fiche.latest_analysis_status === "a_verifier") {
-        summary.analysesToVerify += 1;
+        summary.latestActivityAt = latestActivity;
       }
     }
 
     return Array.from(summaries.values()).sort((a, b) => {
+      const classCompare = a.className.localeCompare(b.className);
+      if (classCompare !== 0) return classCompare;
+
       const lastNameCompare = a.lastName.localeCompare(b.lastName);
-      if (lastNameCompare !== 0) {
-        return lastNameCompare;
-      }
+      if (lastNameCompare !== 0) return lastNameCompare;
 
       return a.firstName.localeCompare(b.firstName);
     });
@@ -457,225 +330,117 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     setSearch("");
     setClassFilter("all");
     setEpreuveFilter("all");
-    setNumeroFicheFilter("all");
     setStatusFilter("all");
-    setCompletionFilter("all");
   }
 
-  function scrollToFicheResults() {
-    window.setTimeout(() => {
-      const firstFicheResult =
-        document.getElementById("teacher-first-fiche-result") ??
-        document.getElementById("teacher-fiche-list");
-
-      firstFicheResult?.scrollIntoView({
-        behavior: "smooth",
-        block: "start",
-      });
-    }, 0);
+  function focusClass(className: string) {
+    setClassFilter(className === "Classe non renseignée" ? "all" : className);
+    setSearch("");
   }
 
-  function focusStudentFiches(firstName: string, lastName: string, className: string) {
+  function focusStudent(firstName: string, lastName: string, className: string) {
     setSearch(`${firstName} ${lastName}`.trim());
     setClassFilter(className === "Classe non renseignée" ? "all" : className);
-    setEpreuveFilter("all");
-    setNumeroFicheFilter("all");
-    setStatusFilter("all");
-    setCompletionFilter("all");
-    setIsFicheDetailsOpen(true);
-    scrollToFicheResults();
   }
-
-  function focusStudentTeacherActions(firstName: string, lastName: string, className: string) {
-    setSearch(`${firstName} ${lastName}`.trim());
-    setClassFilter(className === "Classe non renseignée" ? "all" : className);
-    setEpreuveFilter("all");
-    setNumeroFicheFilter("all");
-    setStatusFilter("teacher_actions");
-    setCompletionFilter("all");
-    setIsFicheDetailsOpen(true);
-    scrollToFicheResults();
-  }
-
-  async function copyReminderMessage() {
-    const message = `Bonjour,
-
-Tu as bien accès à FicheMCV+, mais aucune fiche n’a encore été commencée.
-
-Connecte-toi à ton espace élève, ouvre une première fiche et complète au minimum le contexte, l’entreprise, la situation observée et les acteurs concernés.
-
-Lien de connexion : https://fichemcv-plus.vercel.app/login`;
-
-    try {
-      await navigator.clipboard.writeText(message);
-      setIsReminderMessageCopied(true);
-
-      window.setTimeout(() => {
-        setIsReminderMessageCopied(false);
-      }, 2500);
-    } catch {
-      setIsReminderMessageCopied(false);
-      window.alert("Copie impossible. Sélectionne le texte manuellement.");
-    }
-  }
-
-  async function resetStudentPassword(studentId: string, studentName: string) {
-    const confirmed = window.confirm(
-      `Réinitialiser le mot de passe de ${studentName} ? Un mot de passe temporaire sera généré.`
-    );
-
-    if (!confirmed) {
-      return;
-    }
-
-    setResetPasswordMessage("");
-    setResetPasswordError("");
-    setTemporaryPassword("");
-    setIsTemporaryPasswordCopied(false);
-    setResetPasswordLoadingId(studentId);
-
-    try {
-      const response = await fetch("/api/admin/students/reset-password", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ studentId }),
-      });
-
-      const payload = await response.json();
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Réinitialisation impossible.");
-      }
-
-      const generatedTemporaryPassword = payload.temporaryPassword;
-
-      if (!generatedTemporaryPassword) {
-        throw new Error("Le mot de passe temporaire n’a pas été renvoyé par le serveur.");
-      }
-
-      setTemporaryPassword(generatedTemporaryPassword);
-      setResetPasswordMessage(
-        `Mot de passe temporaire généré pour ${studentName}. Copie-le maintenant et transmets-le à l’élève.`
-      );
-
-      window.setTimeout(() => {
-        document
-          .getElementById("reset-password-result")
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 100);
-    } catch (error) {
-      setResetPasswordError(
-        error instanceof Error
-          ? error.message
-          : "Erreur inconnue pendant la réinitialisation."
-      );
-    } finally {
-      setResetPasswordLoadingId(null);
-    }
-  }
-
-  const visibleStudentSummaries = studentSummaries.filter((summary) => {
-    if (studentActivityFilter === "to_restart") {
-      return summary.startedCount === 0;
-    }
-
-    if (studentActivityFilter === "active") {
-      return summary.startedCount > 0;
-    }
-
-    return true;
-  });
-
-  const studentCorrectionFiches = filteredFiches.filter(
-    (fiche) => fiche.status === "a_corriger"
-  );
-
-  const sortedStudentCorrectionFiches = [...studentCorrectionFiches].sort((a, b) => {
-    const classCompare = String(a.class_name ?? "").localeCompare(
-      String(b.class_name ?? "")
-    );
-
-    if (classCompare !== 0) {
-      return classCompare;
-    }
-
-    const lastNameCompare = String(a.last_name ?? "").localeCompare(
-      String(b.last_name ?? "")
-    );
-
-    if (lastNameCompare !== 0) {
-      return lastNameCompare;
-    }
-
-    return Number(a.numero_fiche ?? 0) - Number(b.numero_fiche ?? 0);
-  });
-
-  const sortedStudentSummaries = [...visibleStudentSummaries].sort((a, b) => {
-    const lastNameCompare = a.lastName.localeCompare(b.lastName);
-
-    if (lastNameCompare !== 0) {
-      return lastNameCompare;
-    }
-
-    return a.firstName.localeCompare(b.firstName);
-  });
 
   return (
     <>
-      {studentCorrectionFiches.length > 0 && (
-        <section className="mb-6 rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-5 shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <p className="text-sm font-semibold uppercase tracking-wide text-emerald-300">
-                En attente côté élèves
-              </p>
+      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <article className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-200">
+            À traiter maintenant
+          </p>
+          <p className="mt-2 text-3xl font-bold text-red-100">{dashboardStats.toProcess}</p>
+          <p className="mt-1 text-sm text-red-100/70">Soumises et corrigées.</p>
+        </article>
 
-              <h2 className="mt-2 text-xl font-bold text-emerald-100">
-                {studentCorrectionFiches.length} fiche(s) en correction élève
-              </h2>
+        <article className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200">
+            En attente élève
+          </p>
+          <p className="mt-2 text-3xl font-bold text-emerald-100">
+            {dashboardStats.waitingStudent}
+          </p>
+          <p className="mt-1 text-sm text-emerald-100/70">Corrections demandées.</p>
+        </article>
 
-              <p className="mt-2 text-sm leading-6 text-emerald-100/80">
-                Ces fiches ont été renvoyées en correction. L’action attendue est maintenant côté élève :
-                l’élève doit corriger puis resoumettre sa fiche.
-              </p>
-            </div>
+        <article className="rounded-2xl border border-sky-500/40 bg-sky-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-sky-200">
+            Finalisées
+          </p>
+          <p className="mt-2 text-3xl font-bold text-sky-100">{dashboardStats.finalized}</p>
+          <p className="mt-1 text-sm text-sky-100/70">Validées, verrouillées, archivées.</p>
+        </article>
 
-            <span className="inline-flex rounded-full border border-emerald-400/50 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-100">
-              Attente élève
-            </span>
+        <article className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
+          <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+            Élèves sans activité
+          </p>
+          <p className="mt-2 text-3xl font-bold text-amber-100">
+            {dashboardStats.inactiveStudents}
+          </p>
+          <p className="mt-1 text-sm text-amber-100/70">Aucune fiche démarrée.</p>
+        </article>
+      </section>
+
+      <section className="mb-6 rounded-2xl border border-red-500/30 bg-slate-900/60 p-5 shadow-sm">
+        <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-slate-100">À traiter en priorité</h2>
+            <p className="text-sm text-slate-400">
+              {priorityFiches.length} fiche(s) soumise(s) ou corrigée(s).
+            </p>
           </div>
+        </div>
 
-          <div className="mt-4 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-            {sortedStudentCorrectionFiches.slice(0, 6).map((fiche) => (
-              <Link
+        {priorityFiches.length === 0 ? (
+          <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+            <p className="text-sm text-slate-400">Aucune fiche à traiter maintenant.</p>
+          </div>
+        ) : (
+          <div className="grid gap-3 lg:grid-cols-2">
+            {priorityFiches.map((fiche) => (
+              <article
                 key={fiche.fiche_id}
-                href={`/fiches/${fiche.fiche_id}`}
-                className="rounded-xl border border-emerald-500/30 bg-slate-950/50 p-3 transition hover:border-emerald-300/70 hover:bg-slate-950"
+                className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
               >
-                <p className="font-semibold text-slate-100">
-                  {fiche.first_name} {fiche.last_name}
-                </p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-slate-100">
+                      {fiche.class_name ?? "Classe non renseignée"} · {getStudentName(fiche)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {fiche.epreuve ?? "Épreuve non renseignée"} · Fiche n°
+                      {fiche.numero_fiche ?? "?"}
+                    </p>
+                  </div>
 
-                <p className="mt-1 text-xs text-slate-400">
-                  {fiche.class_name} · {fiche.epreuve} · Fiche n°{fiche.numero_fiche}
-                </p>
+                  <span
+                    className={`inline-flex w-fit rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                      fiche.status
+                    )}`}
+                  >
+                    {getStatusLabel(fiche.status)}
+                  </span>
+                </div>
 
-                <p className="mt-2 text-xs font-medium text-emerald-200">
-                  En attente de correction élève
-                </p>
-              </Link>
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-slate-400">
+                    Dernière activité : {formatActivityDate(getLatestActivity(fiche))}
+                  </p>
+
+                  <Link
+                    href={`/fiches/${fiche.fiche_id}`}
+                    className="inline-flex items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-white hover:bg-sky-400"
+                  >
+                    Ouvrir la fiche
+                  </Link>
+                </div>
+              </article>
             ))}
           </div>
-
-          {studentCorrectionFiches.length > 6 && (
-            <p className="mt-3 text-xs text-emerald-100/70">
-              + {studentCorrectionFiches.length - 6} autre(s) fiche(s) en attente côté élève.
-            </p>
-          )}
-        </section>
-      )}
+        )}
+      </section>
 
       <section
         id="teacher-fiche-list"
@@ -683,52 +448,31 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
       >
         <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <div>
-            <h2 className="text-lg font-semibold text-slate-100">
-              Filtres du cockpit
-            </h2>
+            <h2 className="text-lg font-semibold text-slate-100">Filtres</h2>
             <p className="text-sm text-slate-400">
               {filteredFiches.length} fiche(s) affichée(s) sur {fiches.length}
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setIsCockpitFiltersOpen((current) => !current)}
-              className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm font-medium text-sky-200 hover:bg-sky-950/40"
-            >
-              {isCockpitFiltersOpen ? "Masquer les filtres" : "Afficher les filtres"}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsFicheDetailsOpen((current) => !current)}
-              className="rounded-lg border border-sky-500/40 px-4 py-2 text-sm font-medium text-sky-200 hover:bg-sky-950/40"
-            >
-              {isFicheDetailsOpen ? "Masquer le détail" : "Afficher le détail"}
-            </button>
-
-            <button
-              type="button"
-              onClick={resetFilters}
-              className="rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
-            >
-              Réinitialiser
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={resetFilters}
+            className="w-fit rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
+          >
+            Réinitialiser
+          </button>
         </div>
 
-        {isCockpitFiltersOpen && (
-          <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
           <label className="block">
             <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Rechercher
+              Recherche
             </span>
             <input
               type="search"
               value={search}
               onChange={(event) => setSearch(event.target.value)}
-              placeholder="Nom, prénom ou titre"
+              placeholder="Nom, prénom, titre..."
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
             />
           </label>
@@ -771,525 +515,117 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
 
           <label className="block">
             <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Numéro
-            </span>
-            <select
-              value={numeroFicheFilter}
-              onChange={(event) => setNumeroFicheFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
-            >
-              <option value="all">Toutes les fiches</option>
-              {ficheNumbers.map((numero) => (
-                <option key={numero} value={String(numero)}>
-                  Fiche n°{numero}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Statut
+              Statut regroupé
             </span>
             <select
               value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value)}
+              onChange={(event) => setStatusFilter(event.target.value as StatusGroup)}
               className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
             >
-              <option value="all">Tous les statuts</option>
-              <option value="teacher_actions">Actions prof</option>
-              {statuses.map((status) => (
-                <option key={status} value={status ?? ""}>
-                  {status}
-                </option>
-              ))}
+              <option value="to_process">À traiter</option>
+              <option value="waiting_student">En attente élève</option>
+              <option value="finalized">Finalisées</option>
+              <option value="drafts">Brouillons</option>
+              <option value="all">Toutes</option>
             </select>
           </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Progression
-            </span>
-            <select
-              value={completionFilter}
-              onChange={(event) => setCompletionFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
-            >
-              <option value="all">Tous les niveaux</option>
-              <option value="vide">Vide — 0 %</option>
-              <option value="fragile">Fragile — 1 à 54 %</option>
-              <option value="intermediaire">Intermédiaire — 55 à 79 %</option>
-              <option value="avancee">Avancée — 80 % et plus</option>
-            </select>
-          </label>
-          </div>
-        )}
-
-        {!isFicheDetailsOpen && (
-          <div className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-            <p className="text-sm text-slate-400">
-              Le détail fiche par fiche est masqué pour alléger le tableau de bord.
-              Utilise “Afficher le détail” ou “Voir ses fiches” depuis une carte élève.
-            </p>
-          </div>
-        )}
+        </div>
       </section>
 
       <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-slate-100">
-            Synthèse par élève
-          </h2>
+          <h2 className="text-lg font-semibold text-slate-100">Élèves et classes</h2>
           <p className="text-sm text-slate-400">
-            Vue rapide de l’avancement des fiches par élève, selon les filtres actifs.
+            Totaux simples calculés avec les filtres actifs.
           </p>
         </div>
 
-        {(resetPasswordMessage || resetPasswordError) && (
-          <div
-            id="reset-password-result"
-            className={`mb-4 rounded-xl border p-4 text-sm ${
-              resetPasswordError
-                ? "border-red-500/40 bg-red-500/10 text-red-200"
-                : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-            }`}
-          >
-            <p>{resetPasswordError || resetPasswordMessage}</p>
-
-            {temporaryPassword && !resetPasswordError && (
-              <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-                <code className="rounded-lg border border-emerald-500/30 bg-slate-950 px-3 py-2 font-mono text-base text-emerald-100">
-                  {temporaryPassword}
-                </code>
-
+        {classSummaries.length > 0 && (
+          <div className="mb-5">
+            <h3 className="mb-2 text-sm font-semibold text-slate-200">Classes</h3>
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {classSummaries.map((summary) => (
                 <button
+                  key={summary.className}
                   type="button"
-                  onClick={async () => {
-                    await navigator.clipboard.writeText(temporaryPassword);
-                    setIsTemporaryPasswordCopied(true);
-
-                    window.setTimeout(() => {
-                      setIsTemporaryPasswordCopied(false);
-                    }, 2000);
-                  }}
-                  className={`rounded-lg border px-3 py-2 text-xs font-semibold transition ${
-                    isTemporaryPasswordCopied
-                      ? "border-emerald-300 bg-emerald-400/20 text-emerald-50"
-                      : "border-emerald-500/40 text-emerald-100 hover:bg-emerald-950/40"
-                  }`}
+                  onClick={() => focusClass(summary.className)}
+                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-4 text-left transition hover:border-sky-500/60"
                 >
-                  {isTemporaryPasswordCopied
-                    ? "Mot de passe copié ✓"
-                    : "Copier le mot de passe"}
+                  <p className="font-semibold text-slate-100">{summary.className}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-300">
+                    <span>{summary.total} fiche(s)</span>
+                    <span>{summary.toProcess} à traiter</span>
+                    <span>{summary.waitingStudent} attente élève</span>
+                    <span>{summary.finalized} finalisée(s)</span>
+                  </div>
                 </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={() => setIsStudentSummaryOpen((current) => !current)}
-          className="mb-4 rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-950/40"
-        >
-          {isStudentSummaryOpen
-            ? "Masquer la synthèse élèves"
-            : "Afficher la synthèse élèves"}
-        </button>
-
-        {isStudentSummaryOpen && (
-          <>
-        {studentSummaries.length > 0 && (
-          <div className="mb-4 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
-                Élèves à relancer
-              </p>
-              <p className="mt-2 text-3xl font-bold text-amber-100">
-                {
-                  studentSummaries.filter(
-                    (summary) => summary.startedCount === 0
-                  ).length
-                }
-              </p>
-              <p className="mt-1 text-sm text-amber-100/70">
-                Aucun travail commencé sur les fiches affichées.
-              </p>
+              ))}
             </div>
-
-            <div className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-              <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200">
-                Élèves actifs
-              </p>
-              <p className="mt-2 text-3xl font-bold text-emerald-100">
-                {
-                  studentSummaries.filter(
-                    (summary) => summary.startedCount > 0
-                  ).length
-                }
-              </p>
-              <p className="mt-1 text-sm text-emerald-100/70">
-                Au moins une fiche démarrée.
-              </p>
-            </div>
-          </div>
-        )}
-
-        {studentSummaries.some((summary) => summary.startedCount === 0) && (
-          <div className="mb-4 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
-                  Message de relance rapide
-                </p>
-                <p className="mt-2 text-sm leading-6 text-amber-100/80">
-                  Un message prêt à copier pour les élèves qui ont créé leur compte
-                  mais n’ont encore commencé aucune fiche.
-                </p>
-              </div>
-
-              <button
-                type="button"
-                onClick={copyReminderMessage}
-                className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-                  isReminderMessageCopied
-                    ? "bg-emerald-500 text-white"
-                    : "bg-amber-500 text-slate-950 hover:bg-amber-400"
-                }`}
-              >
-                {isReminderMessageCopied ? "Message copié" : "Copier le message"}
-              </button>
-            </div>
-
-            <div className="mt-4 rounded-xl border border-amber-500/30 bg-slate-950/50 p-4 text-sm leading-6 text-slate-200">
-              <p>Bonjour,</p>
-              <p className="mt-2">
-                Tu as bien accès à FicheMCV+, mais aucune fiche n’a encore été commencée.
-              </p>
-              <p className="mt-2">
-                Connecte-toi à ton espace élève, ouvre une première fiche et complète
-                au minimum le contexte, l’entreprise, la situation observée et les
-                acteurs concernés.
-              </p>
-              <p className="mt-2">
-                Lien de connexion : https://fichemcv-plus.vercel.app/login
-              </p>
-            </div>
-          </div>
-        )}
-
-        {studentSummaries.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => setStudentActivityFilter("all")}
-              className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                studentActivityFilter === "all"
-                  ? "border-sky-400 bg-sky-500/20 text-sky-100"
-                  : "border-slate-700 text-slate-300 hover:bg-slate-800"
-              }`}
-            >
-              Tous
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStudentActivityFilter("to_restart")}
-              className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                studentActivityFilter === "to_restart"
-                  ? "border-amber-400 bg-amber-500/20 text-amber-100"
-                  : "border-slate-700 text-slate-300 hover:bg-slate-800"
-              }`}
-            >
-              À relancer
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setStudentActivityFilter("active")}
-              className={`rounded-xl border px-4 py-2 text-sm font-medium transition ${
-                studentActivityFilter === "active"
-                  ? "border-emerald-400 bg-emerald-500/20 text-emerald-100"
-                  : "border-slate-700 text-slate-300 hover:bg-slate-800"
-              }`}
-            >
-              Actifs
-            </button>
-          </div>
-        )}
-
-        {studentSummaries.length > 0 && sortedStudentSummaries.length === 0 && (
-          <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-            <p className="text-sm text-slate-400">
-              Aucun élève ne correspond au filtre sélectionné.
-            </p>
           </div>
         )}
 
         {studentSummaries.length === 0 ? (
           <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-            <p className="text-sm text-slate-400">
-              Aucun élève ne correspond aux filtres actifs.
-            </p>
+            <p className="text-sm text-slate-400">Aucun élève ne correspond aux filtres actifs.</p>
           </div>
         ) : (
-          <div className="grid gap-3 lg:grid-cols-2">
-            {sortedStudentSummaries.map((summary) => (
-              <article
-                key={summary.key}
-                className="rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
-              >
-                <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div>
-                    <p className="text-base font-semibold text-slate-100">
-                      {summary.firstName} {summary.lastName}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {summary.className} · {summary.totalFiches} fiche(s) affichée(s)
-                    </p>
-
-                    <div
-                      className={`mt-3 rounded-xl border px-3 py-2 text-xs ${
-                        summary.startedCount > 0
-                          ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                          : "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                      }`}
-                    >
-                      <p className="font-semibold">
-                        Suivi terrain
-                      </p>
-                      <p className="mt-1 leading-5">
-                        {summary.startedCount > 0
-                          ? `${summary.startedCount} fiche(s) démarrée(s) · dernière activité le ${formatActivityDate(summary.latestActivityAt)}`
-                          : "À relancer : aucune fiche commencée"}
-                      </p>
-
-                      {summary.startedCount === 0 && (
-                        <p className="mt-2 rounded-lg border border-amber-400/30 bg-slate-950/40 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-amber-100">
-                          Message visible dans l’espace élève
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  {summary.professorActions > 0 ? (
-                    <span className="rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1 text-xs font-medium text-amber-200">
-                      {summary.professorActions} action(s) prof
-                    </span>
-                  ) : (
-                    <span className="rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-200">
-                      À jour
-                    </span>
-                  )}
-                </div>
-
-                <div className="mb-3 flex flex-wrap gap-2 text-xs font-medium">
-                  <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
-                    E31 : <span className="font-bold">{summary.e31Engaged}/3</span>
-                  </span>
-
-                  <span className="rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-indigo-200">
-                    E32 : <span className="font-bold">{summary.e32Engaged}/4</span>
-                  </span>
-
-                  <span
-                    className={`rounded-full border px-3 py-1 ${
-                      summary.professorActions > 0
-                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                        : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200"
-                    }`}
-                  >
-                    Actions prof : <span className="font-bold">{summary.professorActions}</span>
-                  </span>
-
-                  <span
-                    className={`rounded-full border px-3 py-1 ${
-                      summary.fragileCount > 0
-                        ? "border-amber-500/40 bg-amber-500/10 text-amber-200"
-                        : "border-slate-700 bg-slate-900/70 text-slate-300"
-                    }`}
-                  >
-                    Fragiles : <span className="font-bold">{summary.fragileCount}</span>
-                  </span>
-
-                  <span
-                    className={`rounded-full border px-3 py-1 ${
-                      summary.analysesToVerify > 0
-                        ? "border-violet-500/40 bg-violet-500/10 text-violet-200"
-                        : "border-slate-700 bg-slate-900/70 text-slate-300"
-                    }`}
-                  >
-                    Analyses : <span className="font-bold">{summary.analysesToVerify}</span>
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() =>
-                    setExpandedStudentSummaryKey((currentKey) =>
-                      currentKey === summary.key ? null : summary.key
-                    )
-                  }
-                  className="mb-3 rounded-xl border border-slate-700 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-800"
+          <div>
+            <h3 className="mb-2 text-sm font-semibold text-slate-200">Élèves</h3>
+            <div className="grid gap-3 lg:grid-cols-2">
+              {studentSummaries.map((summary) => (
+                <article
+                  key={summary.key}
+                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
                 >
-                  {expandedStudentSummaryKey === summary.key
-                    ? "Masquer le détail élève"
-                    : "Afficher le détail élève"}
-                </button>
-
-                {expandedStudentSummaryKey === summary.key && (
-                  <>
-                    <div className="mb-3 grid gap-2 sm:grid-cols-4">
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Démarrées
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-emerald-200">
-                      {summary.startedCount}/{summary.totalFiches}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      À démarrer
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">
-                      {summary.notStartedCount}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      À traiter
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-amber-200">
-                      {summary.submittedCount}
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Finalisées
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-sky-200">
-                      {summary.finalizedCount}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Détail E31
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">
-                      {summary.e31Engaged}/3 engagée(s)
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {summary.e31Created}/3 créée(s)
-                    </p>
-                  </div>
-
-                  <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3">
-                    <p className="text-xs uppercase tracking-wide text-slate-500">
-                      Détail E32
-                    </p>
-                    <p className="mt-1 text-sm font-semibold text-slate-100">
-                      {summary.e32Engaged}/4 engagée(s)
-                    </p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {summary.e32Created}/4 créée(s)
-                    </p>
-                  </div>
-                </div>
-
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
-                  {summary.fragileCount > 0 ? (
-                    <p className="text-xs text-amber-200">
-                      ⚠️ {summary.fragileCount} fiche(s) fragile(s) à surveiller.
-                    </p>
-                  ) : (
-                    <p className="text-xs text-slate-500">
-                      Aucun signal fragile sur les fiches affichées.
-                    </p>
-                  )}
-
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        focusStudentFiches(
-                          summary.firstName,
-                          summary.lastName,
-                          summary.className
-                        )
-                      }
-                      className="rounded-xl border border-sky-500/40 px-3 py-2 text-xs font-medium text-sky-200 transition hover:bg-sky-950/40"
-                    >
-                      Voir ses fiches
-                    </button>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div>
+                      <p className="font-semibold text-slate-100">
+                        {`${summary.firstName} ${summary.lastName}`.trim() || "Élève sans nom"}
+                      </p>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {summary.className} · {summary.total} fiche(s)
+                      </p>
+                    </div>
 
                     <button
                       type="button"
                       onClick={() =>
-                        focusStudentTeacherActions(
-                          summary.firstName,
-                          summary.lastName,
-                          summary.className
-                        )
+                        focusStudent(summary.firstName, summary.lastName, summary.className)
                       }
-                      disabled={summary.professorActions === 0}
-                      className="rounded-xl border border-amber-500/40 px-3 py-2 text-xs font-medium text-amber-200 transition hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-40"
+                      className="w-fit rounded-lg border border-sky-500/40 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-950/40"
                     >
-                      Voir à traiter
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() =>
-                        resetStudentPassword(
-                          summary.studentId,
-                          `${summary.firstName} ${summary.lastName}`.trim()
-                        )
-                      }
-                      disabled={resetPasswordLoadingId === summary.studentId}
-                      className="rounded-xl border border-amber-500/40 px-3 py-2 text-xs font-medium text-amber-200 transition hover:bg-amber-950/30 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                      {resetPasswordLoadingId === summary.studentId
-                        ? "Réinitialisation..."
-                        : "Réinitialiser MDP"}
+                      Filtrer
                     </button>
                   </div>
-                </div>
-                  </>
-                )}
-              </article>
-            ))}
+
+                  <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-300 sm:grid-cols-4">
+                    <span>{summary.started}/{summary.total} démarrée(s)</span>
+                    <span>{summary.toProcess} à traiter</span>
+                    <span>{summary.waitingStudent} attente élève</span>
+                    <span>{summary.finalized} finalisée(s)</span>
+                  </div>
+
+                  <p className="mt-3 text-xs text-slate-500">
+                    Dernière activité : {formatActivityDate(summary.latestActivityAt)}
+                  </p>
+                </article>
+              ))}
+            </div>
           </div>
-        )}
-          </>
         )}
       </section>
 
-
-
-      {isFicheDetailsOpen && filteredFiches.length === 0 && (
+      {filteredFiches.length === 0 ? (
         <div className="rounded-lg border border-yellow-500 bg-yellow-950/40 p-4">
-          <p className="font-semibold text-yellow-300">
-            Aucune fiche ne correspond aux filtres
-          </p>
-          <p className="text-yellow-200">
-            Modifie les critères ou réinitialise les filtres.
-          </p>
+          <p className="font-semibold text-yellow-300">Aucune fiche ne correspond aux filtres</p>
+          <p className="text-yellow-200">Modifie les critères ou réinitialise les filtres.</p>
         </div>
-      )}
-
-      {isFicheDetailsOpen && filteredFiches.length > 0 && (
-        <div id="teacher-first-fiche-result" className="scroll-mt-6" />
-      )}
-
-      {isFicheDetailsOpen && filteredFiches.length > 0 && (
+      ) : (
         <>
+          <div className="mb-3">
+            <h2 className="text-lg font-semibold text-slate-100">Liste des fiches</h2>
+          </div>
+
           <div className="space-y-4 md:hidden">
             {filteredFiches.map((fiche) => {
               const score = Number(fiche.completion_score ?? 0);
@@ -1302,68 +638,47 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
                 >
                   <div className="mb-2 flex items-center justify-between gap-3">
                     <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
-                      {fiche.epreuve} · Fiche n°{fiche.numero_fiche}
+                      {fiche.epreuve ?? "Épreuve"} · Fiche n°{fiche.numero_fiche ?? "?"}
                     </span>
 
                     <span className="text-xs text-slate-400">
-                      {fiche.class_name}
+                      {fiche.class_name ?? "Classe non renseignée"}
                     </span>
                   </div>
 
-                  <h2 className="mb-2 text-lg font-semibold">
-                    <Link
-                      href={`/fiches/${fiche.fiche_id}`}
-                      className="text-sky-300 hover:text-sky-200 hover:underline"
-                    >
-                      {fiche.title}
-                    </Link>
-                  </h2>
+                  <h3 className="mb-2 text-lg font-semibold text-slate-100">
+                    {fiche.title ?? "Fiche sans titre"}
+                  </h3>
 
-                  <p className="mb-4 text-sm text-slate-300">
-                    {fiche.first_name} {fiche.last_name}
-                  </p>
+                  <p className="mb-3 text-sm text-slate-300">{getStudentName(fiche)}</p>
+
+                  <span
+                    className={`mb-4 inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                      fiche.status
+                    )}`}
+                  >
+                    {getStatusLabel(fiche.status)}
+                  </span>
 
                   <div className="mb-4 rounded-xl border border-slate-800 bg-slate-950/50 p-3">
                     <div className="mb-2 flex items-center justify-between gap-3">
                       <span className="text-xs uppercase tracking-wide text-slate-500">
                         Progression
                       </span>
-
-                      <span className={`text-sm font-bold ${progress.text}`}>
-                        {score} %
-                      </span>
+                      <span className={`text-sm font-bold ${progress.text}`}>{score} %</span>
                     </div>
 
-                    <div
-                      className={`h-3 overflow-hidden rounded-full ${progress.track}`}
-                    >
+                    <div className={`h-3 overflow-hidden rounded-full ${progress.track}`}>
                       <div
                         className={`h-full rounded-full ${progress.bar}`}
-                        style={{
-                          width: `${Math.min(Math.max(score, 0), 100)}%`,
-                        }}
+                        style={{ width: `${Math.min(Math.max(score, 0), 100)}%` }}
                       />
                     </div>
-
-                    <p className="mt-2 text-xs text-slate-400">
-                      Statut qualité :{" "}
-                      <span className={progress.text}>
-                        {fiche.quality_status ?? "non évalué"}
-                      </span>
-                    </p>
                   </div>
 
-                  <div className="grid gap-2 text-sm text-slate-300">
-                    <p>
-                      <span className="text-slate-500">Statut :</span>{" "}
-                      {fiche.status}
-                    </p>
-
-                    <p>
-                      <span className="text-slate-500">Commentaires :</span>{" "}
-                      {fiche.active_comments_count}
-                    </p>
-                  </div>
+                  <p className="text-sm text-slate-400">
+                    Dernière activité : {formatActivityDate(getLatestActivity(fiche))}
+                  </p>
 
                   <Link
                     href={`/fiches/${fiche.fiche_id}`}
@@ -1382,11 +697,12 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
                 <tr>
                   <th className="p-3 text-left">Classe</th>
                   <th className="p-3 text-left">Élève</th>
-                  <th className="p-3 text-left">Épreuve</th>
-                  <th className="p-3 text-left">Fiche</th>
+                  <th className="p-3 text-left">Épreuve / n°</th>
+                  <th className="p-3 text-left">Titre</th>
                   <th className="p-3 text-left">Statut</th>
                   <th className="p-3 text-left">Progression</th>
-                  <th className="p-3 text-left">Commentaires</th>
+                  <th className="p-3 text-left">Dernière activité</th>
+                  <th className="p-3 text-left">Ouvrir</th>
                 </tr>
               </thead>
 
@@ -1396,65 +712,61 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
                   const progress = getProgressClasses(score);
 
                   return (
-                    <tr
-                      key={fiche.fiche_id}
-                      className="border-t border-slate-800"
-                    >
-                      <td className="p-3">{fiche.class_name}</td>
+                    <tr key={fiche.fiche_id} className="border-t border-slate-800">
+                      <td className="p-3">{fiche.class_name ?? "Non renseignée"}</td>
+
+                      <td className="p-3">{getStudentName(fiche)}</td>
 
                       <td className="p-3">
-                        {fiche.first_name} {fiche.last_name}
+                        {fiche.epreuve ?? "Épreuve"} · n°{fiche.numero_fiche ?? "?"}
                       </td>
-
-                      <td className="p-3">{fiche.epreuve}</td>
 
                       <td className="p-3">
                         <Link
                           href={`/fiches/${fiche.fiche_id}`}
                           className="font-medium text-sky-300 hover:text-sky-200 hover:underline"
                         >
-                          {fiche.title}
+                          {fiche.title ?? "Fiche sans titre"}
                         </Link>
-                        <div className="text-slate-500">
-                          Fiche n°{fiche.numero_fiche}
-                        </div>
                       </td>
 
                       <td className="p-3">
                         <span
-                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getTeacherDashboardStatusClasses(
+                          className={`inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(
                             fiche.status
                           )}`}
                         >
-                          {getTeacherDashboardStatusLabel(fiche.status)}
+                          {getStatusLabel(fiche.status)}
                         </span>
                       </td>
 
                       <td className="p-3">
-                        <div className="min-w-36">
+                        <div className="min-w-32">
                           <div className="mb-1 flex items-center justify-between gap-2">
-                            <span className={`font-bold ${progress.text}`}>
-                              {score} %
-                            </span>
-                            <span className="text-xs text-slate-500">
-                              {fiche.quality_status}
-                            </span>
+                            <span className={`font-bold ${progress.text}`}>{score} %</span>
                           </div>
 
-                          <div
-                            className={`h-2 overflow-hidden rounded-full ${progress.track}`}
-                          >
+                          <div className={`h-2 overflow-hidden rounded-full ${progress.track}`}>
                             <div
                               className={`h-full rounded-full ${progress.bar}`}
-                              style={{
-                                width: `${Math.min(Math.max(score, 0), 100)}%`,
-                              }}
+                              style={{ width: `${Math.min(Math.max(score, 0), 100)}%` }}
                             />
                           </div>
                         </div>
                       </td>
 
-                      <td className="p-3">{fiche.active_comments_count}</td>
+                      <td className="p-3 text-slate-300">
+                        {formatActivityDate(getLatestActivity(fiche))}
+                      </td>
+
+                      <td className="p-3">
+                        <Link
+                          href={`/fiches/${fiche.fiche_id}`}
+                          className="inline-flex items-center justify-center rounded-lg border border-sky-500/40 px-3 py-2 text-xs font-semibold text-sky-200 hover:bg-sky-950/40"
+                        >
+                          Ouvrir
+                        </Link>
+                      </td>
                     </tr>
                   );
                 })}
@@ -1466,4 +778,3 @@ Lien de connexion : https://fichemcv-plus.vercel.app/login`;
     </>
   );
 }
-
