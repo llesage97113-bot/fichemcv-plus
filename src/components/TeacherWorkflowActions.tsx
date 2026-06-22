@@ -105,7 +105,7 @@ export default function TeacherWorkflowActions({
   const canRequestCorrection = status === "soumise";
   const canMarkCorrected = false;
   const canReopenForCorrection = status === "corrigee";
-  const canValidate = status === "corrigee";
+  const canValidate = status === "soumise" || status === "corrigee";
   const canLock = status === "validee";
   const canArchive = status === "verrouillee";
   const passiveWorkflowLabel = getPassiveWorkflowLabel(status);
@@ -222,13 +222,27 @@ export default function TeacherWorkflowActions({
         {canValidate && (
           <button
             type="button"
-            onClick={() =>
+            onClick={() => {
+              const confirmed = window.confirm(
+                status === "soumise"
+                  ? "Valider directement cette fiche ?\n\nLa fiche passera au statut « Validée ». Aucun retour élève ne sera nécessaire."
+                  : "Valider cette fiche ?\n\nLa fiche passera au statut « Validée »."
+              );
+
+              if (!confirmed) {
+                return;
+              }
+
               runWorkflowAction("validate_fiche", "La fiche a été validée.")
-            }
+            }}
             disabled={isLoading}
             className="inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-red-950/30 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
-            {isLoading ? "Validation en cours..." : "Valider la fiche"}
+            {isLoading
+              ? "Validation en cours..."
+              : status === "soumise"
+                ? "Valider directement"
+                : "Valider la fiche"}
           </button>
         )}
 

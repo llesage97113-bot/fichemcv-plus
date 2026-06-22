@@ -2,6 +2,12 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const TEACHER_FEEDBACK_EDITABLE_STATUSES = [
+  "soumise",
+  "a_corriger",
+  "corrigee",
+];
+
 async function requireTeacherOrAdmin() {
   const supabase = await createClient();
 
@@ -108,7 +114,7 @@ export async function POST(request: Request) {
 
   const { data: fiche, error: ficheError } = await admin
     .from("fiches")
-    .select("class_id")
+    .select("class_id, status")
     .eq("id", section.fiche_id)
     .single();
 
@@ -135,6 +141,16 @@ export async function POST(request: Request) {
         { status: 403 }
       );
     }
+  }
+
+  if (!TEACHER_FEEDBACK_EDITABLE_STATUSES.includes(String(fiche.status ?? ""))) {
+    return NextResponse.json(
+      {
+        error:
+          "Cette fiche est en lecture seule : les remarques professeur ne sont plus modifiables.",
+      },
+      { status: 403 }
+    );
   }
 
   const { data, error } = await admin

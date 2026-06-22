@@ -19,6 +19,7 @@ type SectionEditorProps = {
     is_core?: boolean | null;
   };
   isReadOnly?: boolean;
+  showTeacherFeedback?: boolean;
 };
 
 function getStatusLabel(status: string) {
@@ -118,6 +119,7 @@ function getSaveMessageClass(saveState: SaveState, isReadOnly: boolean) {
 export default function SectionEditor({
   section,
   isReadOnly = false,
+  showTeacherFeedback = true,
 }: SectionEditorProps) {
   const router = useRouter();
   const [content, setContent] = useState(section.content ?? "");
@@ -243,7 +245,9 @@ export default function SectionEditor({
         </div>
       )}
 
-      {section.teacher_feedback && section.teacher_feedback.trim().length > 0 && (
+      {showTeacherFeedback &&
+        section.teacher_feedback &&
+        section.teacher_feedback.trim().length > 0 && (
         <div className="mb-4 rounded-xl border border-red-500/50 bg-red-500/10 p-4 text-red-100">
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-200">
             Remarque professeur

@@ -9,6 +9,56 @@ import AppNavigation from "@/components/AppNavigation";
 import { requireRole } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+const TEACHER_FEEDBACK_EDITABLE_STATUSES = [
+  "soumise",
+  "a_corriger",
+  "corrigee",
+];
+
+const FINAL_PREVIEW_STATUSES = ["validee", "verrouillee", "archivee"];
+
+function getStatusLabel(status: string | null) {
+  switch (status) {
+    case "non_commencee":
+      return "Non commencée";
+    case "brouillon":
+      return "Brouillon";
+    case "soumise":
+      return "Soumise";
+    case "a_corriger":
+      return "À corriger";
+    case "corrigee":
+      return "Corrigée";
+    case "validee":
+      return "Validée";
+    case "verrouillee":
+      return "Verrouillée";
+    case "archivee":
+      return "Archivée";
+    default:
+      return status ?? "Statut inconnu";
+  }
+}
+
+function getStatusClasses(status: string | null) {
+  switch (status) {
+    case "soumise":
+      return "bg-sky-500/10 text-sky-300 border-sky-400/40";
+    case "a_corriger":
+      return "bg-amber-500/10 text-amber-300 border-amber-400/40";
+    case "corrigee":
+      return "bg-emerald-500/10 text-emerald-300 border-emerald-400/40";
+    case "validee":
+      return "bg-green-500/10 text-green-300 border-green-400/40";
+    case "verrouillee":
+      return "bg-slate-200/10 text-slate-200 border-slate-400/40";
+    case "archivee":
+      return "bg-indigo-500/10 text-indigo-300 border-indigo-400/40";
+    default:
+      return "bg-slate-800 text-slate-300 border-slate-700";
+  }
+}
+
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
     return {
@@ -74,6 +124,83 @@ async function getTeacherClassIds(
         .map((item) => String(item.class_id ?? ""))
         .filter(Boolean)
     )
+  );
+}
+
+function FinalExportPlaceholders() {
+  return (
+    <section className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Exports
+      </p>
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4">
+          <p className="text-sm font-semibold text-slate-100">Export Word</p>
+          <p className="mt-1 text-sm leading-6 text-slate-400">
+            Emplacement réservé pour la génération documentaire finale.
+          </p>
+        </div>
+
+        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4">
+          <p className="text-sm font-semibold text-slate-100">Export PDF</p>
+          <p className="mt-1 text-sm leading-6 text-slate-400">
+            Emplacement réservé pour une future version de consultation.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FinalSectionsPreview({
+  sections,
+}: {
+  sections: {
+    id: string;
+    section_title: string;
+    content: string | null;
+  }[];
+}) {
+  return (
+    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 shadow-sm sm:p-6">
+      <div className="mb-5 border-b border-slate-800 pb-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Prévisualisation finale
+        </p>
+        <h2 className="mt-2 text-xl font-semibold text-slate-100">
+          Contenu rédigé par l’élève
+        </h2>
+      </div>
+
+      <div className="space-y-8">
+        {sections.map((section, index) => {
+          const content = section.content?.trim();
+
+          return (
+            <article key={section.id} className="border-b border-slate-800 pb-7 last:border-b-0 last:pb-0">
+              <div className="mb-3 flex items-start gap-3">
+                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-300">
+                  {index + 1}
+                </span>
+                <h3 className="text-lg font-semibold leading-snug text-slate-100">
+                  {section.section_title}
+                </h3>
+              </div>
+
+              {content ? (
+                <p className="whitespace-pre-wrap text-justify text-sm leading-7 text-slate-200 sm:text-base">
+                  {content}
+                </p>
+              ) : (
+                <p className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-6 text-slate-500">
+                  Aucun contenu renseigné par l’élève pour cette section.
+                </p>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -161,6 +288,11 @@ export default async function FicheDetailPage({
     fiche.status === "validee" ||
     fiche.status === "verrouillee" ||
     fiche.status === "archivee";
+  const isTeacherFeedbackReadOnly =
+    !TEACHER_FEEDBACK_EDITABLE_STATUSES.includes(String(fiche.status ?? ""));
+  const isFinalPreview = FINAL_PREVIEW_STATUSES.includes(
+    String(fiche.status ?? "")
+  );
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
@@ -186,40 +318,50 @@ export default async function FicheDetailPage({
             <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-300">
               {fiche.class_name}
             </span>
+
+            <span
+              className={`rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(
+                fiche.status
+              )}`}
+            >
+              {getStatusLabel(fiche.status)}
+            </span>
           </div>
 
           <h1 className="mb-4 text-2xl font-bold leading-tight sm:text-3xl">
             {fiche.title}
           </h1>
 
-          <div
-            className={`mb-5 rounded-2xl border p-4 ${progressClasses.box}`}
-          >
-            <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-slate-500">
-                  Progression globale de la fiche
-                </p>
-                <p className={`text-2xl font-bold ${progressClasses.text}`}>
-                  {completionScore}% complétée
+          {!isFinalPreview && (
+            <div
+              className={`mb-5 rounded-2xl border p-4 ${progressClasses.box}`}
+            >
+              <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <p className="text-xs uppercase tracking-wide text-slate-500">
+                    Progression globale de la fiche
+                  </p>
+                  <p className={`text-2xl font-bold ${progressClasses.text}`}>
+                    {completionScore}% complétée
+                  </p>
+                </div>
+
+                <p className="text-sm text-slate-300">
+                  Statut qualité :{" "}
+                  <span className={`font-semibold ${progressClasses.text}`}>
+                    {fiche.quality_status ?? "non évalué"}
+                  </span>
                 </p>
               </div>
 
-              <p className="text-sm text-slate-300">
-                Statut qualité :{" "}
-                <span className={`font-semibold ${progressClasses.text}`}>
-                  {fiche.quality_status ?? "non évalué"}
-                </span>
-              </p>
+              <div className="h-3 overflow-hidden rounded-full bg-slate-800">
+                <div
+                  className={`h-full rounded-full ${progressClasses.bar}`}
+                  style={{ width: `${Math.min(Math.max(completionScore, 0), 100)}%` }}
+                />
+              </div>
             </div>
-
-            <div className="h-3 overflow-hidden rounded-full bg-slate-800">
-              <div
-                className={`h-full rounded-full ${progressClasses.bar}`}
-                style={{ width: `${Math.min(Math.max(completionScore, 0), 100)}%` }}
-              />
-            </div>
-          </div>
+          )}
 
           <div className="mb-4 grid gap-3 text-sm text-slate-300 sm:grid-cols-2">
             <div className="rounded-xl bg-slate-950/60 p-3">
@@ -235,17 +377,21 @@ export default async function FicheDetailPage({
               <p className="text-xs uppercase tracking-wide text-slate-500">
                 Statut
               </p>
-              <p className="font-medium text-slate-100">{fiche.status}</p>
+              <p className="font-medium text-slate-100">
+                {getStatusLabel(fiche.status)}
+              </p>
             </div>
 
-            <div className="rounded-xl bg-slate-950/60 p-3">
-              <p className="text-xs uppercase tracking-wide text-slate-500">
-                Commentaires actifs
-              </p>
-              <p className="font-medium text-slate-100">
-                {fiche.active_comments_count}
-              </p>
-            </div>
+            {!isFinalPreview && (
+              <div className="rounded-xl bg-slate-950/60 p-3">
+                <p className="text-xs uppercase tracking-wide text-slate-500">
+                  Commentaires actifs
+                </p>
+                <p className="font-medium text-slate-100">
+                  {fiche.active_comments_count}
+                </p>
+              </div>
+            )}
 
             <div className="rounded-xl bg-slate-950/60 p-3">
               <p className="text-xs uppercase tracking-wide text-slate-500">
@@ -260,11 +406,15 @@ export default async function FicheDetailPage({
             status={fiche.status}
           />
 
-          <GenerateEvaluationButton
-            ficheId={id}
-            initialReport={latestReport?.report_json ?? null}
-            initialReportCreatedAt={latestReport?.created_at ?? null}
-          />
+          {!isFinalPreview && (
+            <GenerateEvaluationButton
+              ficheId={id}
+              initialReport={latestReport?.report_json ?? null}
+              initialReportCreatedAt={latestReport?.created_at ?? null}
+            />
+          )}
+
+          {isFinalPreview && <FinalExportPlaceholders />}
         </header>
 
         {sectionsError && (
@@ -285,18 +435,24 @@ export default async function FicheDetailPage({
           </div>
         )}
 
-        {!sectionsError && sections && sections.length > 0 && (
+        {!sectionsError && sections && sections.length > 0 && isFinalPreview && (
+          <FinalSectionsPreview sections={sections} />
+        )}
+
+        {!sectionsError && sections && sections.length > 0 && !isFinalPreview && (
           <div className="space-y-4">
             {sections.map((section) => (
               <div key={section.id} className="space-y-3">
                 <SectionEditor
                   section={section}
                   isReadOnly={isReadOnly}
+                  showTeacherFeedback={!isTeacherFeedbackReadOnly}
                 />
 
                 <TeacherSectionFeedbackEditor
                   sectionId={section.id}
                   initialFeedback={section.teacher_feedback ?? null}
+                  readOnly={isTeacherFeedbackReadOnly}
                 />
               </div>
             ))}

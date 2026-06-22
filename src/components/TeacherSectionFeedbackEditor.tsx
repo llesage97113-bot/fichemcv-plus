@@ -8,11 +8,13 @@ type SaveState = "idle" | "saving" | "saved" | "error";
 type TeacherSectionFeedbackEditorProps = {
   sectionId: string;
   initialFeedback?: string | null;
+  readOnly?: boolean;
 };
 
 export default function TeacherSectionFeedbackEditor({
   sectionId,
   initialFeedback = null,
+  readOnly = false,
 }: TeacherSectionFeedbackEditorProps) {
   const router = useRouter();
 
@@ -52,6 +54,27 @@ export default function TeacherSectionFeedbackEditor({
           : "Erreur inconnue pendant la sauvegarde."
       );
     }
+  }
+
+  if (readOnly) {
+    return (
+      <div className="mt-3 rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-200">
+            Remarque professeur
+          </p>
+          {feedback.trim().length > 0 ? (
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-red-100">
+              {feedback}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm leading-6 text-red-100/70">
+              Aucune remarque professeur.
+            </p>
+          )}
+        </div>
+      </div>
+    );
   }
 
   return (
