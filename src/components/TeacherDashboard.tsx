@@ -82,6 +82,13 @@ function isStarted(fiche: FicheDashboardItem) {
   );
 }
 
+function getStudentKey(fiche: FicheDashboardItem) {
+  return (
+    fiche.student_id ||
+    `${fiche.class_name ?? "sans-classe"}-${fiche.last_name ?? ""}-${fiche.first_name ?? ""}`
+  );
+}
+
 function getStatusLabel(status: string | null | undefined) {
   switch (status) {
     case "non_commencee":
@@ -138,16 +145,11 @@ function getProgressClasses(score: number) {
 }
 
 export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
-  const [search, setSearch] = useState("");
   const [classFilter, setClassFilter] = useState("all");
   const [epreuveFilter, setEpreuveFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusGroup>("all");
-
-  const classes = useMemo(() => {
-    return Array.from(
-      new Set(fiches.map((fiche) => fiche.class_name).filter(Boolean))
-    ).sort();
-  }, [fiches]);
+  const [selectedStudentKey, setSelectedStudentKey] = useState<string | null>(null);
+  const [selectedStudentLabel, setSelectedStudentLabel] = useState("");
 
   const epreuves = useMemo(() => {
     return Array.from(
@@ -190,25 +192,8 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       });
   }, [fiches]);
 
-  const filteredFiches = useMemo(() => {
-    const normalizedSearch = search.trim().toLowerCase();
-
+  const baseFilteredFiches = useMemo(() => {
     return fiches.filter((fiche) => {
-      const searchableText = [
-        fiche.first_name,
-        fiche.last_name,
-        fiche.title,
-        fiche.epreuve,
-        fiche.class_name,
-        fiche.numero_fiche ? `fiche ${fiche.numero_fiche}` : null,
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
-
-      const matchesSearch =
-        normalizedSearch.length === 0 || searchableText.includes(normalizedSearch);
-
       const matchesClass =
         classFilter === "all" ||
         normalizeClassName(fiche.class_name) === normalizeClassName(classFilter);
@@ -216,9 +201,19 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       const matchesEpreuve = epreuveFilter === "all" || fiche.epreuve === epreuveFilter;
       const matchesStatus = isInGroup(fiche.status, statusFilter);
 
-      return matchesSearch && matchesClass && matchesEpreuve && matchesStatus;
+      return matchesClass && matchesEpreuve && matchesStatus;
     });
-  }, [classFilter, epreuveFilter, fiches, search, statusFilter]);
+  }, [classFilter, epreuveFilter, fiches, statusFilter]);
+
+  const filteredFiches = useMemo(() => {
+    if (!selectedStudentKey) {
+      return [];
+    }
+
+    return baseFilteredFiches.filter(
+      (fiche) => getStudentKey(fiche) === selectedStudentKey
+    );
+  }, [baseFilteredFiches, selectedStudentKey]);
 
   const classSummaries = useMemo(() => {
     const summaries = new Map<
@@ -232,7 +227,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       }
     >();
 
-    for (const fiche of filteredFiches) {
+    for (const fiche of baseFilteredFiches) {
       const className = fiche.class_name ?? "Classe non renseignée";
 
       if (!summaries.has(className)) {
@@ -257,7 +252,7 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     return Array.from(summaries.values()).sort((a, b) =>
       a.className.localeCompare(b.className)
     );
-  }, [filteredFiches]);
+  }, [baseFilteredFiches]);
 
   const studentSummaries = useMemo(() => {
     const summaries = new Map<
@@ -276,10 +271,8 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       }
     >();
 
-    for (const fiche of filteredFiches) {
-      const key =
-        fiche.student_id ||
-        `${fiche.class_name ?? "sans-classe"}-${fiche.last_name ?? ""}-${fiche.first_name ?? ""}`;
+    for (const fiche of baseFilteredFiches) {
+      const key = getStudentKey(fiche);
 
       if (!summaries.has(key)) {
         summaries.set(key, {
@@ -324,66 +317,117 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
 
       return a.firstName.localeCompare(b.firstName);
     });
-  }, [filteredFiches]);
+  }, [baseFilteredFiches]);
 
-  function resetFilters() {
-    setSearch("");
-    setClassFilter("all");
+  function resetStudentFicheFilters() {
     setEpreuveFilter("all");
     setStatusFilter("all");
   }
 
   function focusClass(className: string) {
     setClassFilter(className === "Classe non renseignée" ? "all" : className);
-    setSearch("");
+    setSelectedStudentKey(null);
+    setSelectedStudentLabel("");
   }
 
-  function focusStudent(firstName: string, lastName: string, className: string) {
-    setSearch(`${firstName} ${lastName}`.trim());
-    setClassFilter(className === "Classe non renseignée" ? "all" : className);
+  function closeStudentSelection() {
+    setSelectedStudentKey(null);
+    setSelectedStudentLabel("");
+  }
+
+  function scrollToSection(sectionId: string) {
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById(sectionId)
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function showStudentFiches(summary: {
+    key: string;
+    firstName: string;
+    lastName: string;
+    className: string;
+  }) {
+    const studentName =
+      `${summary.firstName} ${summary.lastName}`.trim() || "Élève sans nom";
+
+    setSelectedStudentKey(summary.key);
+    setSelectedStudentLabel(`${studentName} — ${summary.className}`);
+
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("teacher-fiche-list")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
   }
 
   return (
     <>
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <article className="rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-red-200">
+        <button
+          type="button"
+          onClick={() => scrollToSection("teacher-priority-section")}
+          className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
             À traiter maintenant
           </p>
-          <p className="mt-2 text-3xl font-bold text-red-100">{dashboardStats.toProcess}</p>
-          <p className="mt-1 text-sm text-red-100/70">Soumises et corrigées.</p>
-        </article>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{dashboardStats.toProcess}</p>
+          <p className="mt-1 text-xs text-slate-500">Soumises et corrigées.</p>
+        </button>
 
-        <article className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-emerald-200">
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("waiting_student");
+            scrollToSection("teacher-students-classes");
+          }}
+          className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
             En attente élève
           </p>
-          <p className="mt-2 text-3xl font-bold text-emerald-100">
+          <p className="mt-2 text-2xl font-semibold text-slate-100">
             {dashboardStats.waitingStudent}
           </p>
-          <p className="mt-1 text-sm text-emerald-100/70">Corrections demandées.</p>
-        </article>
+          <p className="mt-1 text-xs text-slate-500">Corrections demandées.</p>
+        </button>
 
-        <article className="rounded-2xl border border-sky-500/40 bg-sky-500/10 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-sky-200">
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter("finalized");
+            scrollToSection("teacher-fiche-list");
+          }}
+          className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
             Finalisées
           </p>
-          <p className="mt-2 text-3xl font-bold text-sky-100">{dashboardStats.finalized}</p>
-          <p className="mt-1 text-sm text-sky-100/70">Validées, verrouillées, archivées.</p>
-        </article>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{dashboardStats.finalized}</p>
+          <p className="mt-1 text-xs text-slate-500">Validées, verrouillées, archivées.</p>
+        </button>
 
-        <article className="rounded-2xl border border-amber-500/40 bg-amber-500/10 p-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-amber-200">
+        <button
+          type="button"
+          onClick={() => scrollToSection("teacher-students-classes")}
+          className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+        >
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
             Élèves sans activité
           </p>
-          <p className="mt-2 text-3xl font-bold text-amber-100">
+          <p className="mt-2 text-2xl font-semibold text-slate-100">
             {dashboardStats.inactiveStudents}
           </p>
-          <p className="mt-1 text-sm text-amber-100/70">Aucune fiche démarrée.</p>
-        </article>
+          <p className="mt-1 text-xs text-slate-500">Aucune fiche démarrée.</p>
+        </button>
       </section>
 
-      <section className="mb-6 rounded-2xl border border-red-500/30 bg-slate-900/60 p-5 shadow-sm">
+      <section
+        id="teacher-priority-section"
+        className="mb-6 rounded-2xl border border-red-500/30 bg-slate-900/60 p-5 shadow-sm"
+      >
         <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <h2 className="text-lg font-semibold text-slate-100">À traiter en priorité</h2>
@@ -443,96 +487,9 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
       </section>
 
       <section
-        id="teacher-fiche-list"
-        className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm"
+        id="teacher-students-classes"
+        className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm"
       >
-        <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-slate-100">Filtres</h2>
-            <p className="text-sm text-slate-400">
-              {filteredFiches.length} fiche(s) affichée(s) sur {fiches.length}
-            </p>
-          </div>
-
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="w-fit rounded-lg border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800"
-          >
-            Réinitialiser
-          </button>
-        </div>
-
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Recherche
-            </span>
-            <input
-              type="search"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Nom, prénom, titre..."
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Classe
-            </span>
-            <select
-              value={classFilter}
-              onChange={(event) => setClassFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
-            >
-              <option value="all">Toutes les classes</option>
-              {classes.map((className) => (
-                <option key={className} value={className ?? ""}>
-                  {className}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Épreuve
-            </span>
-            <select
-              value={epreuveFilter}
-              onChange={(event) => setEpreuveFilter(event.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
-            >
-              <option value="all">Toutes les épreuves</option>
-              {epreuves.map((epreuve) => (
-                <option key={epreuve} value={epreuve ?? ""}>
-                  {epreuve}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-slate-500">
-              Statut regroupé
-            </span>
-            <select
-              value={statusFilter}
-              onChange={(event) => setStatusFilter(event.target.value as StatusGroup)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
-            >
-              <option value="to_process">À traiter</option>
-              <option value="waiting_student">En attente élève</option>
-              <option value="finalized">Finalisées</option>
-              <option value="drafts">Brouillons</option>
-              <option value="all">Toutes</option>
-            </select>
-          </label>
-        </div>
-      </section>
-
-      <section className="mb-6 rounded-2xl border border-sky-500/30 bg-slate-900/60 p-5 shadow-sm">
         <div className="mb-4">
           <h2 className="text-lg font-semibold text-slate-100">Élèves et classes</h2>
           <p className="text-sm text-slate-400">
@@ -589,12 +546,14 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
 
                     <button
                       type="button"
-                      onClick={() =>
-                        focusStudent(summary.firstName, summary.lastName, summary.className)
-                      }
-                      className="w-fit rounded-lg border border-sky-500/40 px-3 py-2 text-xs font-semibold text-sky-200 transition hover:bg-sky-950/40"
+                      onClick={() => showStudentFiches(summary)}
+                      className={`w-fit rounded-lg border px-3 py-2 text-xs font-semibold transition ${
+                        selectedStudentKey === summary.key
+                          ? "border-emerald-400/60 bg-emerald-500/10 text-emerald-100"
+                          : "border-sky-500/40 text-sky-200 hover:bg-sky-950/40"
+                      }`}
                     >
-                      Filtrer
+                      Voir les fiches
                     </button>
                   </div>
 
@@ -615,16 +574,99 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         )}
       </section>
 
-      {filteredFiches.length === 0 ? (
-        <div className="rounded-lg border border-yellow-500 bg-yellow-950/40 p-4">
-          <p className="font-semibold text-yellow-300">Aucune fiche ne correspond aux filtres</p>
-          <p className="text-yellow-200">Modifie les critères ou réinitialise les filtres.</p>
+      {!selectedStudentKey ? (
+        <div
+          id="teacher-fiche-list"
+          className="rounded-lg border border-sky-500/40 bg-sky-500/10 p-4"
+        >
+          <p className="font-semibold text-sky-200">
+            Sélectionne un élève dans la rubrique “Élèves et classes” pour consulter ses fiches.
+          </p>
         </div>
       ) : (
         <>
-          <div className="mb-3">
-            <h2 className="text-lg font-semibold text-slate-100">Liste des fiches</h2>
+          <div
+            id="teacher-fiche-list"
+            className="mb-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4"
+          >
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-emerald-100">
+                  Fiches de {selectedStudentLabel}
+                </h2>
+                <p className="mt-1 text-sm text-emerald-100/80">
+                  {filteredFiches.length} fiche(s) affichée(s).
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={closeStudentSelection}
+                className="w-fit rounded-lg border border-emerald-400/50 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-950/30"
+              >
+                Fermer la sélection
+              </button>
+            </div>
+
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,220px)_minmax(0,220px)_auto]">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-emerald-100/70">
+                  Épreuve
+                </span>
+                <select
+                  value={epreuveFilter}
+                  onChange={(event) => setEpreuveFilter(event.target.value)}
+                  className="w-full rounded-lg border border-emerald-400/30 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-300"
+                >
+                  <option value="all">Toutes les épreuves</option>
+                  {epreuves.map((epreuve) => (
+                    <option key={epreuve} value={epreuve ?? ""}>
+                      {epreuve}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-emerald-100/70">
+                  Statut regroupé
+                </span>
+                <select
+                  value={statusFilter}
+                  onChange={(event) => setStatusFilter(event.target.value as StatusGroup)}
+                  className="w-full rounded-lg border border-emerald-400/30 bg-slate-950/80 px-3 py-2 text-sm text-slate-100 outline-none focus:border-emerald-300"
+                >
+                  <option value="to_process">À traiter</option>
+                  <option value="waiting_student">En attente élève</option>
+                  <option value="finalized">Finalisées</option>
+                  <option value="drafts">Brouillons</option>
+                  <option value="all">Toutes</option>
+                </select>
+              </label>
+
+              <div className="flex items-end">
+                <button
+                  type="button"
+                  onClick={resetStudentFicheFilters}
+                  className="w-fit rounded-lg border border-emerald-400/50 px-4 py-2 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-950/30"
+                >
+                  Réinitialiser les filtres
+                </button>
+              </div>
+            </div>
           </div>
+
+          {filteredFiches.length === 0 ? (
+            <div className="rounded-lg border border-yellow-500 bg-yellow-950/40 p-4">
+              <p className="font-semibold text-yellow-300">
+                Aucune fiche ne correspond aux filtres
+              </p>
+              <p className="text-yellow-200">
+                Modifie les critères ou réinitialise les filtres.
+              </p>
+            </div>
+          ) : (
+            <>
 
           <div className="space-y-4 md:hidden">
             {filteredFiches.map((fiche) => {
@@ -773,6 +815,8 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
               </tbody>
             </table>
           </div>
+            </>
+          )}
         </>
       )}
     </>

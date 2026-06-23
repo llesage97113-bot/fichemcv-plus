@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@/lib/supabase/server";
 import SectionEditor from "@/components/SectionEditor";
 import TeacherWorkflowActions from "@/components/TeacherWorkflowActions";
 import GenerateEvaluationButton from "@/components/GenerateEvaluationButton";
@@ -127,7 +127,13 @@ async function getTeacherClassIds(
   );
 }
 
-function FinalExportPlaceholders() {
+function FinalExportActions({
+  ficheId,
+  canExportWord,
+}: {
+  ficheId: string;
+  canExportWord: boolean;
+}) {
   return (
     <section className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -136,15 +142,26 @@ function FinalExportPlaceholders() {
       <div className="mt-3 grid gap-3 sm:grid-cols-2">
         <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4">
           <p className="text-sm font-semibold text-slate-100">Export Word</p>
-          <p className="mt-1 text-sm leading-6 text-slate-400">
-            Emplacement réservé pour la génération documentaire finale.
-          </p>
+          {canExportWord ? (
+            <a
+              href={`/api/fiches/${ficheId}/export/word`}
+              className="mt-3 inline-flex cursor-pointer items-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
+            >
+              Export Word
+            </a>
+          ) : (
+            <p className="mt-1 text-sm leading-6 text-slate-400">
+              Disponible uniquement pour les fiches archivées E31 Option B.
+            </p>
+          )}
         </div>
 
         <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4">
-          <p className="text-sm font-semibold text-slate-100">Export PDF</p>
+          <p className="text-sm font-semibold text-slate-100">
+            Export PDF — bientôt disponible
+          </p>
           <p className="mt-1 text-sm leading-6 text-slate-400">
-            Emplacement réservé pour une future version de consultation.
+            Aucun export PDF actif n’est proposé pour le moment.
           </p>
         </div>
       </div>
@@ -210,6 +227,7 @@ export default async function FicheDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const authUser = await requireRole("professeur");
+  const supabase = await createClient();
 
   const { id } = await params;
   const admin = createAdminClient();
@@ -235,11 +253,29 @@ export default async function FicheDetailPage({
     }
   }
 
-  const { data: fiche, error: ficheError } = await ficheQuery.single();
+  const { data: dashboardFiche, error: ficheError } = await ficheQuery.single();
 
-  if (ficheError || !fiche) {
+  if (ficheError || !dashboardFiche) {
     notFound();
   }
+
+  const { data: ficheTechnical, error: ficheTechnicalError } = await supabase
+    .from("fiches")
+    .select("id, status, epreuve, mcv_option")
+    .eq("id", id)
+    .single();
+
+  if (ficheTechnicalError || !ficheTechnical) {
+    notFound();
+  }
+
+  const fiche = {
+    ...dashboardFiche,
+    id: ficheTechnical.id,
+    status: ficheTechnical.status,
+    epreuve: ficheTechnical.epreuve,
+    mcv_option: ficheTechnical.mcv_option,
+  };
 
   const { data: sections, error: sectionsError } = await supabase
     .from("fiche_sections_dashboard")
@@ -293,6 +329,12 @@ export default async function FicheDetailPage({
   const isFinalPreview = FINAL_PREVIEW_STATUSES.includes(
     String(fiche.status ?? "")
   );
+  const ficheId = String(fiche.id ?? id);
+  const status = String(fiche.status ?? "");
+  const epreuve = String(fiche.epreuve ?? "");
+  const mcv_option = String(fiche.mcv_option ?? "");
+  const canExportWord =
+    status === "archivee" && epreuve === "E31" && mcv_option === "B";
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
@@ -414,7 +456,12 @@ export default async function FicheDetailPage({
             />
           )}
 
-          {isFinalPreview && <FinalExportPlaceholders />}
+          {isFinalPreview && (
+            <FinalExportActions
+              ficheId={ficheId}
+              canExportWord={canExportWord}
+            />
+          )}
         </header>
 
         {sectionsError && (

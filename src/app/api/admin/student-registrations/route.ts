@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 
+type McvOption = "A" | "B";
+
 async function requireTeacher() {
   const supabase = await createClient();
 
@@ -89,6 +91,10 @@ function isTeacherAllowedForClass(
   classId: string | null | undefined
 ) {
   return Boolean(classId) && teacherClassIds.includes(String(classId));
+}
+
+function isMcvOption(value: string | null | undefined): value is McvOption {
+  return value === "A" || value === "B";
 }
 
 const E31_SECTIONS = [
@@ -263,7 +269,8 @@ const FICHE_TEMPLATES = [
 async function createMissingFichesForStudent(
   admin: ReturnType<typeof createAdminClient>,
   studentId: string,
-  classId: string | null
+  classId: string | null,
+  mcvOption: McvOption
 ) {
   if (!classId) {
     throw new Error("Impossible de générer les fiches : classe non renseignée.");
@@ -298,6 +305,7 @@ async function createMissingFichesForStudent(
       item_key: template.item_key,
       item_label: template.item_label,
       item_description: template.item_description,
+      mcv_option: mcvOption,
       company_name: "",
       pfmp_period: "",
       situation_date: "",
@@ -494,6 +502,34 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: registrationClass, error: registrationClassError } =
+      await admin
+        .from("classes")
+        .select("id, mcv_option")
+        .eq("id", pendingStudent.class_id)
+        .single();
+
+    if (registrationClassError || !registrationClass) {
+      return NextResponse.json(
+        {
+          error:
+            registrationClassError?.message ??
+            "Classe associée à l’inscription introuvable.",
+        },
+        { status: 500 }
+      );
+    }
+
+    if (!isMcvOption(registrationClass.mcv_option)) {
+      return NextResponse.json(
+        {
+          error:
+            "L’option MCV de la classe doit être renseignée avant de valider cet élève.",
+        },
+        { status: 400 }
+      );
+    }
+
     const { data: existingStudents, error: existingStudentsError } = await admin
       .from("students")
       .select("id, first_name, last_name, registration_status")
@@ -537,10 +573,11 @@ export async function POST(request: Request) {
         registration_status: "validated",
         validated_at: new Date().toISOString(),
         rejected_at: null,
+        mcv_option: registrationClass.mcv_option,
       })
       .eq("id", studentId)
       .eq("registration_status", "pending")
-      .select("id, first_name, last_name, class_id, registration_status")
+      .select("id, first_name, last_name, class_id, registration_status, mcv_option")
       .single();
 
     if (error) {
@@ -548,7 +585,18 @@ export async function POST(request: Request) {
     }
 
     try {
-      await createMissingFichesForStudent(admin, data.id, data.class_id);
+      if (!isMcvOption(data.mcv_option)) {
+        throw new Error(
+          "L’option MCV de l’élève doit être renseignée avant de générer les fiches."
+        );
+      }
+
+      await createMissingFichesForStudent(
+        admin,
+        data.id,
+        data.class_id,
+        data.mcv_option
+      );
     } catch (ficheError) {
       return NextResponse.json(
         {

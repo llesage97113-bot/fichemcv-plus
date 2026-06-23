@@ -162,15 +162,6 @@ export default async function Home() {
           </div>
         )}
 
-        {!error && (!data || data.length === 0) && (
-          <div className="rounded-lg border border-yellow-500 bg-yellow-950/40 p-4">
-            <p className="font-semibold text-yellow-300">Aucune fiche trouvée</p>
-            <p className="text-yellow-200">
-              Aucune fiche n’est visible pour ce compte professeur. Vérifie que ce professeur est bien rattaché à une classe dans l’administration.
-            </p>
-          </div>
-        )}
-
         <ClassRegistrationManager />
 
         <PendingStudentRegistrations />

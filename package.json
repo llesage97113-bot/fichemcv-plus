@@ -5,22 +5,29 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "test:export-word": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/export-word-build --noEmit false scripts/test_generate_e31_word.ts src/lib/exports/generateArchivedFicheDocx.ts src/lib/exports/ficheExportTypes.ts && node tmp/export-word-build/scripts/test_generate_e31_word.js",
+    "test:collect-export": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/collect-export-build --noEmit false scripts/test_collect_archived_e31_export.ts src/lib/exports/collectArchivedFicheExportData.ts src/lib/exports/ficheExportTypes.ts && node tmp/collect-export-build/scripts/test_collect_archived_e31_export.js",
+    "test:generate-real-word": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/generate-real-word-build --noEmit false scripts/test_generate_real_archived_e31_word.ts src/lib/exports/collectArchivedFicheExportData.ts src/lib/exports/generateArchivedFicheDocx.ts src/lib/exports/ficheExportTypes.ts && node tmp/generate-real-word-build/scripts/test_generate_real_archived_e31_word.js",
     "start": "next start",
     "lint": "eslint"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.3",
     "@supabase/supabase-js": "^2.106.1",
+    "docxtemplater": "^3.69.0",
     "exceljs": "^4.4.0",
     "next": "16.2.6",
+    "pizzip": "^3.2.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "ws": "^8.21.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/ws": "^8.18.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",

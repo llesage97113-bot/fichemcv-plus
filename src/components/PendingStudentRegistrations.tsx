@@ -32,6 +32,10 @@ export default function PendingStudentRegistrations() {
   const [message, setMessage] = useState<string | null>(null);
   const [validatedStudentName, setValidatedStudentName] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const visibleMessage =
+    message?.startsWith("Accès réservé") && message.includes("professeur")
+      ? null
+      : message;
 
   async function loadRegistrations() {
     setIsLoading(true);
@@ -319,7 +323,7 @@ export default function PendingStudentRegistrations() {
         </div>
       )}
 
-      {message && (
+      {visibleMessage && (
         <div
           className={`mt-4 rounded-2xl border p-4 text-sm ${
             isError
@@ -333,7 +337,7 @@ export default function PendingStudentRegistrations() {
             </p>
           )}
 
-          <p className="leading-6">{message}</p>
+          <p className="leading-6">{visibleMessage}</p>
 
           {!isError && validatedStudentName && (
             <p className="mt-2 text-xs leading-5 text-emerald-200/90">

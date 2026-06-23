@@ -228,12 +228,6 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
         </div>
       </div>
 
-      {!isCheckingSession && isAuthenticated && isAdminPreviewingTeacherSpace && (
-        <div className="mt-4 rounded-xl border border-purple-400/40 bg-purple-500/10 p-3 text-sm text-purple-100">
-          <span className="font-semibold">Mode administrateur :</span>{" "}
-          vous consultez l’espace professeur. Certaines actions pédagogiques peuvent être réservées à un compte professeur.
-        </div>
-      )}
     </nav>
   );
 }

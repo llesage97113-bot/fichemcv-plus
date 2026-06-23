@@ -32,6 +32,10 @@ export default function ClassRegistrationManager() {
 
   const [message, setMessage] = useState<string | null>(null);
   const [isError, setIsError] = useState(false);
+  const visibleMessage =
+    message?.startsWith("Accès réservé") && message.includes("professeur")
+      ? null
+      : message;
 
   function buildRegistrationCode(className: string, schoolYear: string) {
     const normalizedClass = className
@@ -499,13 +503,13 @@ Après inscription, ton professeur devra valider ton compte.`;
         </button>
       </form>
 
-      {message && (
+      {visibleMessage && (
         <p
           className={`mt-3 text-sm ${
             isError ? "text-red-300" : "text-emerald-300"
           }`}
         >
-          {message}
+          {visibleMessage}
         </p>
       )}
     </section>
