@@ -45,7 +45,8 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
   const pathname = usePathname();
   const supabase = useMemo(() => createClient(), []);
 
-  const isAdminSpace = pathname.startsWith("/admin");
+  const isAdminHome = pathname === "/admin";
+  const isAccountsSpace = pathname.startsWith("/admin/comptes");
   const isTeacherSpace = pathname === "/" || pathname.startsWith("/fiches");
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -160,12 +161,26 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
               type="button"
               onClick={() => navigateTo("/admin")}
               className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
-                isAdminSpace
+                isAdminHome
                   ? "bg-purple-500 text-white hover:bg-purple-400"
                   : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
               }`}
             >
               Administration
+            </button>
+          )}
+
+          {!isCheckingSession && isAuthenticated && role === "admin" && (
+            <button
+              type="button"
+              onClick={() => navigateTo("/admin/comptes")}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                isAccountsSpace
+                  ? "bg-purple-500 text-white hover:bg-purple-400"
+                  : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
+              }`}
+            >
+              Gestion des comptes
             </button>
           )}
 

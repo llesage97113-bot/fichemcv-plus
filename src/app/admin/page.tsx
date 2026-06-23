@@ -1,3 +1,4 @@
+import Link from "next/link";
 import AppNavigation from "@/components/AppNavigation";
 import AdminTeacherCreator from "@/components/AdminTeacherCreator";
 import AdminTeacherPasswordResetter from "@/components/AdminTeacherPasswordResetter";
@@ -119,6 +120,31 @@ export default async function AdminPage() {
             <p className="mt-1 text-sm text-slate-400">
               En attente de validation
             </p>
+          </div>
+        </section>
+
+        <section className="mb-6 rounded-2xl border border-purple-500/30 bg-purple-500/10 p-5 shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold uppercase tracking-wide text-purple-200">
+                Comptes utilisateurs
+              </p>
+              <h2 className="mt-1 text-xl font-bold text-slate-100">
+                Gestion des comptes
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-300">
+                Consulte les comptes professeurs et élèves, les statuts actifs,
+                les identifiants internes et les profils métier reliés. Cette
+                première version est strictement en lecture seule.
+              </p>
+            </div>
+
+            <Link
+              href="/admin/comptes"
+              className="inline-flex w-fit items-center justify-center rounded-xl bg-purple-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-400"
+            >
+              Ouvrir la gestion des comptes
+            </Link>
           </div>
         </section>
 
