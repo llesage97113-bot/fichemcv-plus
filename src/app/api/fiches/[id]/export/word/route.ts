@@ -2,11 +2,22 @@ import { NextResponse } from "next/server";
 
 import { createClient } from "@/lib/supabase/server";
 import { buildArchivedFicheFilename } from "@/lib/exports/buildArchivedFicheFilename";
+import { collectArchivedE32FicheExportData } from "@/lib/exports/collectArchivedE32FicheExportData";
 import { collectArchivedFicheExportData } from "@/lib/exports/collectArchivedFicheExportData";
+import { generateArchivedE32FicheDocx } from "@/lib/exports/generateArchivedE32FicheDocx";
 import { generateArchivedFicheDocx } from "@/lib/exports/generateArchivedFicheDocx";
 import { isValidUuid } from "@/lib/exports/isValidUuid";
 
 export const runtime = "nodejs";
+
+type ExportableFicheRow = {
+  id: string;
+  status: string | null;
+  epreuve: string | null;
+  mcv_option: string | null;
+};
+
+type SupabaseSessionClient = Awaited<ReturnType<typeof createClient>>;
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -20,10 +31,12 @@ function getCollectErrorStatus(error: unknown) {
   }
 
   if (
+    message.startsWith("Export Word non disponible") ||
     message.startsWith("Export refusé") ||
     message.startsWith("Champ obligatoire absent") ||
     message.startsWith("Date invalide") ||
     message.startsWith("Correspondance des sections E31 impossible") ||
+    message.startsWith("Correspondance des sections E32 impossible") ||
     message.includes("introuvable ou inaccessible")
   ) {
     return 409;
@@ -45,6 +58,58 @@ function logExportIssue(
     message,
     detail: detail.slice(0, 240),
   });
+}
+
+async function loadExportableFiche(
+  supabase: SupabaseSessionClient,
+  ficheId: string,
+): Promise<ExportableFicheRow> {
+  const { data: fiche, error } = await supabase
+    .from("fiches")
+    .select("id, status, epreuve, mcv_option")
+    .eq("id", ficheId)
+    .single();
+
+  if (error || !fiche) {
+    throw new Error(
+      `Fiche introuvable ou inaccessible: ${error?.message ?? ficheId}`,
+    );
+  }
+
+  return fiche as unknown as ExportableFicheRow;
+}
+
+async function generateArchivedWordExport(
+  supabase: SupabaseSessionClient,
+  fiche: ExportableFicheRow,
+) {
+  if (fiche.status !== "archivee") {
+    throw new Error(
+      `Export refusé: status attendu "archivee", reçu "${fiche.status ?? ""}".`,
+    );
+  }
+
+  if (fiche.epreuve === "E31" && fiche.mcv_option === "B") {
+    const data = await collectArchivedFicheExportData(supabase, fiche.id);
+
+    return {
+      docxBuffer: generateArchivedFicheDocx(data),
+      filename: buildArchivedFicheFilename(data),
+    };
+  }
+
+  if (fiche.epreuve === "E32" && fiche.mcv_option === "B") {
+    const data = await collectArchivedE32FicheExportData(supabase, fiche.id);
+
+    return {
+      docxBuffer: generateArchivedE32FicheDocx(data),
+      filename: buildArchivedFicheFilename(data),
+    };
+  }
+
+  throw new Error(
+    "Export Word non disponible pour cette épreuve et cette option.",
+  );
 }
 
 export async function GET(
@@ -76,9 +141,11 @@ export async function GET(
   }
 
   try {
-    const data = await collectArchivedFicheExportData(supabase, ficheId);
-    const docxBuffer = generateArchivedFicheDocx(data);
-    const filename = buildArchivedFicheFilename(data);
+    const fiche = await loadExportableFiche(supabase, ficheId);
+    const { docxBuffer, filename } = await generateArchivedWordExport(
+      supabase,
+      fiche,
+    );
 
     return new Response(docxBuffer as unknown as BodyInit, {
       status: 200,
@@ -92,6 +159,7 @@ export async function GET(
     });
   } catch (error) {
     const status = getCollectErrorStatus(error);
+    const errorMessage = error instanceof Error ? error.message : "";
 
     if (status === 404) {
       logExportIssue("warn", "fiche inaccessible", ficheId, error);
@@ -100,6 +168,13 @@ export async function GET(
 
     if (status === 409) {
       logExportIssue("warn", "fiche non exportable", ficheId, error);
+      if (errorMessage.startsWith("Export Word non disponible")) {
+        return jsonError(
+          "Export Word non disponible pour cette épreuve et cette option.",
+          409,
+        );
+      }
+
       return jsonError("Cette fiche ne peut pas être exportée en Word.", 409);
     }
 

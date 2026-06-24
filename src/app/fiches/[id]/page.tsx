@@ -6,6 +6,7 @@ import TeacherWorkflowActions from "@/components/TeacherWorkflowActions";
 import GenerateEvaluationButton from "@/components/GenerateEvaluationButton";
 import TeacherSectionFeedbackEditor from "@/components/TeacherSectionFeedbackEditor";
 import AppNavigation from "@/components/AppNavigation";
+import ActivityInfoReadOnly from "@/components/ActivityInfoReadOnly";
 import { requireRole } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -151,7 +152,7 @@ function FinalExportActions({
             </a>
           ) : (
             <p className="mt-1 text-sm leading-6 text-slate-400">
-              Disponible uniquement pour les fiches archivées E31 Option B.
+              Disponible uniquement pour les fiches archivées E31-B ou E32-B.
             </p>
           )}
         </div>
@@ -261,7 +262,9 @@ export default async function FicheDetailPage({
 
   const { data: ficheTechnical, error: ficheTechnicalError } = await supabase
     .from("fiches")
-    .select("id, status, epreuve, mcv_option")
+    .select(
+      "id, status, epreuve, mcv_option, company_name, pfmp_period, situation_date, student_role, realization_conditions"
+    )
     .eq("id", id)
     .single();
 
@@ -275,6 +278,11 @@ export default async function FicheDetailPage({
     status: ficheTechnical.status,
     epreuve: ficheTechnical.epreuve,
     mcv_option: ficheTechnical.mcv_option,
+    company_name: ficheTechnical.company_name,
+    pfmp_period: ficheTechnical.pfmp_period,
+    situation_date: ficheTechnical.situation_date,
+    student_role: ficheTechnical.student_role,
+    realization_conditions: ficheTechnical.realization_conditions,
   };
 
   const { data: sections, error: sectionsError } = await supabase
@@ -334,7 +342,9 @@ export default async function FicheDetailPage({
   const epreuve = String(fiche.epreuve ?? "");
   const mcv_option = String(fiche.mcv_option ?? "");
   const canExportWord =
-    status === "archivee" && epreuve === "E31" && mcv_option === "B";
+    status === "archivee" &&
+    ((epreuve === "E31" && mcv_option === "B") ||
+      (epreuve === "E32" && mcv_option === "B"));
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
@@ -470,6 +480,16 @@ export default async function FicheDetailPage({
             <p className="text-red-200">{sectionsError.message}</p>
           </div>
         )}
+
+        <ActivityInfoReadOnly
+          info={{
+            company_name: fiche.company_name,
+            pfmp_period: fiche.pfmp_period,
+            situation_date: fiche.situation_date,
+            student_role: fiche.student_role,
+            realization_conditions: fiche.realization_conditions,
+          }}
+        />
 
         {!sectionsError && (!sections || sections.length === 0) && (
           <div className="rounded-xl border border-yellow-500 bg-yellow-950/40 p-4">

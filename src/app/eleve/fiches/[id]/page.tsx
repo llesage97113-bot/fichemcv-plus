@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import SectionEditor from "@/components/SectionEditor";
 import SubmitFicheButton from "@/components/SubmitFicheButton";
 import AppNavigation from "@/components/AppNavigation";
+import ActivityInfoEditor from "@/components/ActivityInfoEditor";
 import { requireRole } from "@/lib/auth/requireUser";
 
 function getGlobalProgressClasses(score: number) {
@@ -147,6 +148,19 @@ export default async function StudentFicheDetailPage({
     notFound();
   }
 
+  const { data: activityInfo, error: activityInfoError } = await supabase
+    .from("fiches")
+    .select(
+      "company_name, pfmp_period, situation_date, student_role, realization_conditions"
+    )
+    .eq("id", id)
+    .eq("student_id", connectedStudent.id)
+    .single();
+
+  if (activityInfoError || !activityInfo) {
+    notFound();
+  }
+
   const { data: sections, error: sectionsError } = await supabase
     .from("fiche_sections_dashboard")
     .select("*")
@@ -162,6 +176,8 @@ export default async function StudentFicheDetailPage({
     fiche.status === "validee" ||
     fiche.status === "verrouillee" ||
     fiche.status === "archivee";
+  const isActivityInfoReadOnly =
+    fiche.status !== "brouillon" && fiche.status !== "a_corriger";
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
@@ -247,6 +263,13 @@ export default async function StudentFicheDetailPage({
             <p className="text-red-200">{sectionsError.message}</p>
           </div>
         )}
+
+        <ActivityInfoEditor
+          ficheId={id}
+          studentId={connectedStudent.id}
+          initialInfo={activityInfo}
+          isReadOnly={isActivityInfoReadOnly}
+        />
 
         {!sectionsError && (!sections || sections.length === 0) && (
           <div className="rounded-xl border border-yellow-500 bg-yellow-950/40 p-4">
