@@ -1,12 +1,14 @@
 import type {
   ArchivedE32FicheExportData,
   ArchivedFicheExportData,
+  ArchivedOptionAFicheExportData,
 } from "./ficheExportTypes";
 
 const MAX_FILENAME_LENGTH = 120;
 type ArchivedFicheFilenameData =
   | ArchivedFicheExportData
-  | ArchivedE32FicheExportData;
+  | ArchivedE32FicheExportData
+  | ArchivedOptionAFicheExportData;
 
 export function normalizeArchivedFicheFilenamePart(value: string): string {
   return (
@@ -24,7 +26,10 @@ export function buildArchivedFicheFilename(
   data: ArchivedFicheFilenameData,
 ): string {
   const epreuve = normalizeArchivedFicheFilenamePart(data.epreuve);
-  const mcvOption = data.mcv_option.startsWith("B") ? "B" : data.mcv_option;
+  const mcvOption =
+    data.mcv_option.startsWith("B") || data.mcv_option === "A"
+      ? data.mcv_option.slice(0, 1)
+      : data.mcv_option;
   const parts = [
     epreuve,
     normalizeArchivedFicheFilenamePart(mcvOption),

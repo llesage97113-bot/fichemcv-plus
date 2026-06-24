@@ -92,6 +92,20 @@ function getGlobalProgressClasses(score: number) {
   };
 }
 
+function normalizeMcvOption(value: unknown) {
+  const normalized = String(value ?? "").trim().toUpperCase();
+
+  if (/^(OPTION\s*)?A(\b|$)/.test(normalized)) {
+    return "A";
+  }
+
+  if (/^(OPTION\s*)?B(\b|$)/.test(normalized)) {
+    return "B";
+  }
+
+  return "";
+}
+
 async function getTeacherClassIds(
   admin: ReturnType<typeof createAdminClient>,
   teacherEmail: string | null | undefined
@@ -152,7 +166,7 @@ function FinalExportActions({
             </a>
           ) : (
             <p className="mt-1 text-sm leading-6 text-slate-400">
-              Disponible uniquement pour les fiches archivées E31-B ou E32-B.
+              Disponible pour les fiches archivées E31 et E32, options A et B.
             </p>
           )}
         </div>
@@ -340,11 +354,11 @@ export default async function FicheDetailPage({
   const ficheId = String(fiche.id ?? id);
   const status = String(fiche.status ?? "");
   const epreuve = String(fiche.epreuve ?? "");
-  const mcv_option = String(fiche.mcv_option ?? "");
+  const mcv_option = normalizeMcvOption(fiche.mcv_option);
   const canExportWord =
     status === "archivee" &&
-    ((epreuve === "E31" && mcv_option === "B") ||
-      (epreuve === "E32" && mcv_option === "B"));
+    (epreuve === "E31" || epreuve === "E32") &&
+    (mcv_option === "A" || mcv_option === "B");
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">

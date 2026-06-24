@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
+import { join } from "node:path";
 
 import { createClient } from "@/lib/supabase/server";
 import { buildArchivedFicheFilename } from "@/lib/exports/buildArchivedFicheFilename";
 import { collectArchivedE32FicheExportData } from "@/lib/exports/collectArchivedE32FicheExportData";
 import { collectArchivedFicheExportData } from "@/lib/exports/collectArchivedFicheExportData";
-import { generateArchivedE32FicheDocx } from "@/lib/exports/generateArchivedE32FicheDocx";
-import { generateArchivedFicheDocx } from "@/lib/exports/generateArchivedFicheDocx";
+import {
+  collectArchivedOptionAFicheExportData,
+  normalizeArchivedMcvOption,
+} from "@/lib/exports/collectArchivedOptionAFicheExportData";
+import { generateArchivedWordDocx } from "@/lib/exports/generateArchivedWordDocx";
 import { isValidUuid } from "@/lib/exports/isValidUuid";
 
 export const runtime = "nodejs";
@@ -18,6 +22,8 @@ type ExportableFicheRow = {
 };
 
 type SupabaseSessionClient = Awaited<ReturnType<typeof createClient>>;
+type NormalizedEpreuve = "E31" | "E32";
+type NormalizedMcvOption = "A" | "B";
 
 function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -60,6 +66,38 @@ function logExportIssue(
   });
 }
 
+function normalizeEpreuve(value: unknown): NormalizedEpreuve | null {
+  const normalized = String(value ?? "").trim().toUpperCase();
+
+  if (normalized === "E31" || normalized === "E32") {
+    return normalized;
+  }
+
+  return null;
+}
+
+function selectArchivedWordTemplate(
+  epreuve: NormalizedEpreuve,
+  option: NormalizedMcvOption,
+): string {
+  const templateNameByKey: Record<
+    `${NormalizedEpreuve}-${NormalizedMcvOption}`,
+    string
+  > = {
+    "E31-A": "E31_A_fiche_archived.docx",
+    "E31-B": "E31_B_fiche_archived.docx",
+    "E32-A": "E32_A_fiche_archived.docx",
+    "E32-B": "E32_B_fiche_archived.docx",
+  };
+
+  return join(
+    process.cwd(),
+    "templates",
+    "word",
+    templateNameByKey[`${epreuve}-${option}`],
+  );
+}
+
 async function loadExportableFiche(
   supabase: SupabaseSessionClient,
   ficheId: string,
@@ -89,27 +127,43 @@ async function generateArchivedWordExport(
     );
   }
 
-  if (fiche.epreuve === "E31" && fiche.mcv_option === "B") {
+  const epreuve = normalizeEpreuve(fiche.epreuve);
+  const option = normalizeArchivedMcvOption(fiche.mcv_option);
+
+  if (!epreuve || !option) {
+    throw new Error(
+      `Export Word non disponible: épreuve ou option non supportée (epreuve="${
+        fiche.epreuve ?? ""
+      }", mcv_option="${fiche.mcv_option ?? ""}").`,
+    );
+  }
+
+  const templatePath = selectArchivedWordTemplate(epreuve, option);
+
+  if (epreuve === "E31" && option === "B") {
     const data = await collectArchivedFicheExportData(supabase, fiche.id);
 
     return {
-      docxBuffer: generateArchivedFicheDocx(data),
+      docxBuffer: generateArchivedWordDocx(data, templatePath),
       filename: buildArchivedFicheFilename(data),
     };
   }
 
-  if (fiche.epreuve === "E32" && fiche.mcv_option === "B") {
+  if (epreuve === "E32" && option === "B") {
     const data = await collectArchivedE32FicheExportData(supabase, fiche.id);
 
     return {
-      docxBuffer: generateArchivedE32FicheDocx(data),
+      docxBuffer: generateArchivedWordDocx(data, templatePath),
       filename: buildArchivedFicheFilename(data),
     };
   }
 
-  throw new Error(
-    "Export Word non disponible pour cette épreuve et cette option.",
-  );
+  const data = await collectArchivedOptionAFicheExportData(supabase, fiche.id);
+
+  return {
+    docxBuffer: generateArchivedWordDocx(data, templatePath),
+    filename: buildArchivedFicheFilename(data),
+  };
 }
 
 export async function GET(

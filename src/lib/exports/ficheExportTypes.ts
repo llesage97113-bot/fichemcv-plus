@@ -50,3 +50,30 @@ export type ArchivedE32FicheExportData = {
   updated_at: string;
   archived_at: string;
 };
+
+export type ArchivedOptionAFicheExportData = {
+  school_name: string;
+  exam_session: string;
+  candidate_full_name: string;
+  candidate_number: string;
+  class_name: string;
+  epreuve: string;
+  mcv_option: string;
+  fiche_number: string;
+  fiche_title: string;
+  company_name: string;
+  pfmp_period: string;
+  situation_date: string;
+  student_role: string;
+  realization_conditions: string;
+  context: string;
+  location: string;
+  activity_objective: string;
+  actors: string;
+  activity_description: string;
+  results: string;
+  improvement_proposals: string;
+  personal_review: string;
+  updated_at: string;
+  archived_at: string;
+};
