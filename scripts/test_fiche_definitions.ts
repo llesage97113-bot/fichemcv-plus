@@ -3,6 +3,8 @@ import {
   type FicheDefinition,
   type McvOption,
 } from "../src/lib/ficheDefinitions";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -153,7 +155,67 @@ function assertOptionB() {
   }
 }
 
+function assertOptionASectionTemplatesMigration() {
+  const migration = readFileSync(
+    join(
+      process.cwd(),
+      "supabase/migrations/20260625_add_option_a_section_templates.sql"
+    ),
+    "utf8"
+  );
+  const expectedOptionASectionKeys = [
+    "contexte",
+    "lieu",
+    "objectif_activite",
+    "acteurs",
+    "description_activite",
+    "resultats_obtenus",
+    "propositions_amelioration",
+    "bilan_personnel",
+  ];
+
+  assert(
+    migration.includes("add column if not exists mcv_option text"),
+    "La migration doit ajouter section_templates.mcv_option."
+  );
+  assert(
+    migration.includes(
+      "unique nulls not distinct (epreuve, mcv_option, section_key)"
+    ),
+    "La migration doit rendre unique epreuve + mcv_option + section_key."
+  );
+  assert(
+    migration.includes("st.mcv_option = case"),
+    "La vue doit joindre section_templates avec l'option de la fiche."
+  );
+  assert(
+    migration.includes("where epreuve in ('E31', 'E32')") &&
+      migration.includes("set mcv_option = 'B'"),
+    "La migration doit conserver les templates E31/E32 historiques en Option B."
+  );
+
+  for (const epreuve of ["E31", "E32"] as const) {
+    for (const sectionKey of expectedOptionASectionKeys) {
+      assert(
+        migration.includes(`'${epreuve}',\n    'A',\n    '${sectionKey}'`),
+        `Template ${epreuve}-A-${sectionKey} manquant dans la migration.`
+      );
+    }
+  }
+
+  assert(
+    migration.includes("'E31',\n    'A',\n    'contexte'") &&
+      migration.includes("set mcv_option = 'B'"),
+    "E31-A-contexte et E31-B-contexte doivent être distingués par mcv_option."
+  );
+  assert(
+    !/espagne|mobilit[eé]|erasmus/i.test(migration),
+    "Les aides Option A ne doivent pas contenir Espagne, mobilité ou Erasmus."
+  );
+}
+
 assertOptionA();
 assertOptionB();
+assertOptionASectionTemplatesMigration();
 
 console.log("Définitions de fiches Option A/B validées.");
