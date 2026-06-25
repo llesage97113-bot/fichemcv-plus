@@ -159,7 +159,7 @@ function assertOptionASectionTemplatesMigration() {
   const migration = readFileSync(
     join(
       process.cwd(),
-      "supabase/migrations/20260625_add_option_a_section_templates.sql"
+      "supabase/migrations/20260625_fix_deployed_option_a_section_templates.sql"
     ),
     "utf8"
   );

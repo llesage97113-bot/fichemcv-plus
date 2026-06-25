@@ -66,6 +66,27 @@ function logExportIssue(
   });
 }
 
+function getExportConflictMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : "";
+
+  if (message.startsWith("Export Word non disponible")) {
+    return "Export Word non disponible pour cette épreuve et cette option.";
+  }
+
+  if (message.includes("status attendu \"archivee\"")) {
+    return "Export Word disponible uniquement pour une fiche archivée.";
+  }
+
+  if (
+    message.includes("classes.school_name") ||
+    message.includes("classes.exam_session")
+  ) {
+    return "Export Word impossible : informations de classe incomplètes.";
+  }
+
+  return "Cette fiche ne peut pas être exportée en Word.";
+}
+
 function normalizeEpreuve(value: unknown): NormalizedEpreuve | null {
   const normalized = String(value ?? "").trim().toUpperCase();
 
@@ -213,7 +234,6 @@ export async function GET(
     });
   } catch (error) {
     const status = getCollectErrorStatus(error);
-    const errorMessage = error instanceof Error ? error.message : "";
 
     if (status === 404) {
       logExportIssue("warn", "fiche inaccessible", ficheId, error);
@@ -222,14 +242,7 @@ export async function GET(
 
     if (status === 409) {
       logExportIssue("warn", "fiche non exportable", ficheId, error);
-      if (errorMessage.startsWith("Export Word non disponible")) {
-        return jsonError(
-          "Export Word non disponible pour cette épreuve et cette option.",
-          409,
-        );
-      }
-
-      return jsonError("Cette fiche ne peut pas être exportée en Word.", 409);
+      return jsonError(getExportConflictMessage(error), 409);
     }
 
     logExportIssue("error", "échec inattendu de génération", ficheId, error);
