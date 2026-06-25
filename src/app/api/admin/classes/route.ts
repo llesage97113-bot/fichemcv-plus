@@ -19,6 +19,44 @@ async function requireTeacher() {
   return user;
 }
 
+async function getTeacherProfile(
+  admin: ReturnType<typeof createAdminClient>,
+  teacherEmail: string | null | undefined
+) {
+  const { data: appUser, error: appUserError } = await admin
+    .from("app_users")
+    .select("id")
+    .eq("email", teacherEmail ?? "")
+    .eq("role", "teacher")
+    .eq("is_active", true)
+    .single();
+
+  if (appUserError || !appUser) {
+    throw new Error(appUserError?.message ?? "Compte professeur introuvable.");
+  }
+
+  const { data: teacherProfile, error: teacherProfileError } = await admin
+    .from("teachers")
+    .select("id")
+    .eq("user_id", appUser.id)
+    .single();
+
+  if (teacherProfileError || !teacherProfile) {
+    throw new Error(
+      teacherProfileError?.message ?? "Profil professeur introuvable."
+    );
+  }
+
+  return teacherProfile;
+}
+
+function isDuplicateClassError(error: { code?: string; message?: string }) {
+  return (
+    error.code === "23505" &&
+    String(error.message ?? "").includes("classes_name_school_year_key")
+  );
+}
+
 export async function GET() {
   const teacher = await requireTeacher();
 
@@ -184,6 +222,21 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
+  let teacherProfile: { id: string };
+
+  try {
+    teacherProfile = await getTeacherProfile(admin, teacher.email);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        error:
+          error instanceof Error
+            ? error.message
+            : "Profil professeur introuvable.",
+      },
+      { status: 500 }
+    );
+  }
 
   const { data, error } = await admin
     .from("classes")
@@ -202,7 +255,34 @@ export async function POST(request: Request) {
     .single();
 
   if (error) {
+    if (isDuplicateClassError(error)) {
+      return NextResponse.json(
+        {
+          error:
+            "Une classe portant ce nom existe déjà pour cette année scolaire.",
+        },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  const { error: assignmentError } = await admin.from("class_teachers").insert({
+    id: crypto.randomUUID(),
+    class_id: data.id,
+    teacher_id: teacherProfile.id,
+    role_in_class: "professeur référent",
+  });
+
+  if (assignmentError) {
+    return NextResponse.json(
+      {
+        error:
+          "Classe créée, mais le rattachement au professeur a échoué. Contacte l’administrateur avant de réessayer.",
+      },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({

@@ -139,10 +139,13 @@ Après inscription, ton professeur devra valider ton compte.`;
     }
   }
 
-  async function loadClasses() {
+  async function loadClasses({ resetMessage = true } = {}) {
     setIsLoading(true);
-    setMessage(null);
-    setIsError(false);
+
+    if (resetMessage) {
+      setMessage(null);
+      setIsError(false);
+    }
 
     try {
       const response = await fetch("/api/admin/classes");
@@ -197,7 +200,7 @@ Après inscription, ton professeur devra valider ton compte.`;
       setMessage(payload.message ?? "Classe mise à jour.");
       setIsError(false);
       setEditingClassId(null);
-      await loadClasses();
+      await loadClasses({ resetMessage: false });
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Erreur inconnue."
@@ -246,7 +249,7 @@ Après inscription, ton professeur devra valider ton compte.`;
       setNewMcvOption("");
       setNewCode("");
 
-      await loadClasses();
+      await loadClasses({ resetMessage: false });
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Erreur inconnue."
@@ -273,7 +276,7 @@ Après inscription, ton professeur devra valider ton compte.`;
 
         <button
           type="button"
-          onClick={loadClasses}
+          onClick={() => loadClasses()}
           disabled={isLoading}
           className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-200 transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60"
         >
