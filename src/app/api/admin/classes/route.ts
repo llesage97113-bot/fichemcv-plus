@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { isMcvOption } from "@/lib/ficheDefinitions";
 import { normalizeRegistrationCode } from "@/lib/normalizers";
 
 async function requireTeacher() {
@@ -64,7 +65,7 @@ export async function GET() {
   let classesQuery = admin
     .from("classes")
     .select(
-      "id, name, school_year, level, registration_code, is_registration_open, created_at, updated_at"
+      "id, name, school_year, level, mcv_option, registration_code, is_registration_open, created_at, updated_at"
     )
     .order("school_year", { ascending: false })
     .order("name", { ascending: true });
@@ -167,15 +168,16 @@ export async function POST(request: Request) {
   const name = String(body?.name ?? "").trim();
   const schoolYear = String(body?.schoolYear ?? "").trim();
   const level = String(body?.level ?? "").trim();
+  const mcvOption = String(body?.mcvOption ?? "");
   const registrationCode = normalizeRegistrationCode(
     String(body?.registrationCode ?? "")
   );
 
-  if (!name || !schoolYear || !registrationCode) {
+  if (!name || !schoolYear || !registrationCode || !isMcvOption(mcvOption)) {
     return NextResponse.json(
       {
         error:
-          "Nom de classe, année scolaire et code d’inscription sont obligatoires.",
+          "Nom de classe, année scolaire, option MCV et code d’inscription sont obligatoires. L’option doit être A ou B.",
       },
       { status: 400 }
     );
@@ -190,11 +192,12 @@ export async function POST(request: Request) {
       name,
       school_year: schoolYear,
       level,
+      mcv_option: mcvOption,
       registration_code: registrationCode,
       is_registration_open: true,
     })
     .select(
-      "id, name, school_year, level, registration_code, is_registration_open"
+      "id, name, school_year, level, mcv_option, registration_code, is_registration_open"
     )
     .single();
 

@@ -2,11 +2,14 @@
 
 import { FormEvent, useEffect, useState } from "react";
 
+type McvOptionFormValue = "" | "A" | "B";
+
 type ClassItem = {
   id: string;
   name: string | null;
   school_year: string | null;
   level: string | null;
+  mcv_option: string | null;
   registration_code: string | null;
   is_registration_open: boolean | null;
   students_total?: number;
@@ -28,6 +31,7 @@ export default function ClassRegistrationManager() {
   const [newName, setNewName] = useState("");
   const [newSchoolYear, setNewSchoolYear] = useState("2025-2026");
   const [newLevel, setNewLevel] = useState("");
+  const [newMcvOption, setNewMcvOption] = useState<McvOptionFormValue>("");
   const [newCode, setNewCode] = useState("");
 
   const [message, setMessage] = useState<string | null>(null);
@@ -36,6 +40,18 @@ export default function ClassRegistrationManager() {
     message?.startsWith("Accès réservé") && message.includes("professeur")
       ? null
       : message;
+
+  function getMcvOptionLabel(option: string | null) {
+    if (option === "A") {
+      return "Option A – Animation et gestion de l’espace commercial";
+    }
+
+    if (option === "B") {
+      return "Option B – Prospection clientèle et valorisation de l’offre commerciale";
+    }
+
+    return "Option non renseignée";
+  }
 
   function buildRegistrationCode(className: string, schoolYear: string) {
     const normalizedClass = className
@@ -195,6 +211,12 @@ Après inscription, ton professeur devra valider ton compte.`;
     setMessage(null);
     setIsError(false);
 
+    if (newMcvOption !== "A" && newMcvOption !== "B") {
+      setMessage("Choisis une option MCV valide avant de créer la classe.");
+      setIsError(true);
+      return;
+    }
+
     try {
       const response = await fetch("/api/admin/classes", {
         method: "POST",
@@ -205,6 +227,7 @@ Après inscription, ton professeur devra valider ton compte.`;
           name: newName,
           schoolYear: newSchoolYear,
           level: newLevel,
+          mcvOption: newMcvOption,
           registrationCode: newCode,
         }),
       });
@@ -220,6 +243,7 @@ Après inscription, ton professeur devra valider ton compte.`;
 
       setNewName("");
       setNewLevel("");
+      setNewMcvOption("");
       setNewCode("");
 
       await loadClasses();
@@ -285,6 +309,18 @@ Après inscription, ton professeur devra valider ton compte.`;
                     <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
                       <span className="rounded-full border border-sky-500/40 bg-sky-500/10 px-3 py-1 text-sky-200">
                         Code : {classItem.registration_code || "non défini"}
+                      </span>
+
+                      <span
+                        className={`rounded-full border px-3 py-1 ${
+                          classItem.mcv_option === "A"
+                            ? "border-violet-400/40 bg-violet-500/10 text-violet-200"
+                            : classItem.mcv_option === "B"
+                              ? "border-sky-500/40 bg-sky-500/10 text-sky-200"
+                              : "border-amber-500/40 bg-amber-500/10 text-amber-200"
+                        }`}
+                      >
+                        {getMcvOptionLabel(classItem.mcv_option)}
                       </span>
 
                       {classItem.registration_code && (
@@ -452,7 +488,7 @@ Après inscription, ton professeur devra valider ton compte.`;
           Créer une nouvelle classe
         </h3>
 
-        <div className="grid gap-3 md:grid-cols-4">
+        <div className="grid gap-3 md:grid-cols-5">
           <input
             required
             value={newName}
@@ -475,6 +511,26 @@ Après inscription, ton professeur devra valider ton compte.`;
             placeholder="Terminale Bac Pro MCV option A"
             className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
           />
+
+          <label className="block">
+            <span className="sr-only">Option MCV</span>
+            <select
+              required
+              value={newMcvOption}
+              onChange={(event) =>
+                setNewMcvOption(event.target.value as McvOptionFormValue)
+              }
+              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
+            >
+              <option value="">Option MCV</option>
+              <option value="A">
+                Option A – Animation et gestion de l’espace commercial
+              </option>
+              <option value="B">
+                Option B – Prospection clientèle et valorisation de l’offre commerciale
+              </option>
+            </select>
+          </label>
 
           <div className="flex gap-2">
             <input

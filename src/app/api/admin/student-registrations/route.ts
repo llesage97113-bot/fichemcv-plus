@@ -1,8 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-
-type McvOption = "A" | "B";
+import {
+  getFicheDefinitionsForOption,
+  isMcvOption,
+  type McvOption,
+} from "@/lib/ficheDefinitions";
 
 async function requireTeacher() {
   const supabase = await createClient();
@@ -93,179 +96,6 @@ function isTeacherAllowedForClass(
   return Boolean(classId) && teacherClassIds.includes(String(classId));
 }
 
-function isMcvOption(value: string | null | undefined): value is McvOption {
-  return value === "A" || value === "B";
-}
-
-const E31_SECTIONS = [
-  {
-    section_key: "contexte",
-    section_title: "Contexte de la situation de vente",
-    linked_competencies: ["contexte", "communication_professionnelle"],
-    sort_order: 1,
-  },
-  {
-    section_key: "besoin_client",
-    section_title: "Découverte du besoin client",
-    linked_competencies: ["questionnement", "besoin_client"],
-    sort_order: 2,
-  },
-  {
-    section_key: "offre_proposee",
-    section_title: "Offre proposée",
-    linked_competencies: ["offre_adaptee"],
-    sort_order: 3,
-  },
-  {
-    section_key: "argumentation",
-    section_title: "Argumentation utilisée",
-    linked_competencies: ["argumentation_commerciale"],
-    sort_order: 4,
-  },
-  {
-    section_key: "communication_professionnelle",
-    section_title: "Communication professionnelle",
-    linked_competencies: ["communication_professionnelle"],
-    sort_order: 5,
-  },
-  {
-    section_key: "bilan",
-    section_title: "Bilan de la situation",
-    linked_competencies: ["analyse_reflexive"],
-    sort_order: 6,
-  },
-];
-
-const E32_SECTIONS = [
-  {
-    section_key: "contexte_suivi",
-    section_title: "Contexte de la situation de suivi",
-    linked_competencies: ["contexte", "suivi_vente"],
-    sort_order: 1,
-  },
-  {
-    section_key: "suivi_commande",
-    section_title: "Suivi de la commande",
-    linked_competencies: ["suivi_commande"],
-    sort_order: 2,
-  },
-  {
-    section_key: "services_associes",
-    section_title: "Services associés",
-    linked_competencies: ["services_associes"],
-    sort_order: 3,
-  },
-  {
-    section_key: "retours_reclamations",
-    section_title: "Retours ou réclamations",
-    linked_competencies: ["reclamation", "demande_client"],
-    sort_order: 4,
-  },
-  {
-    section_key: "solution_client",
-    section_title: "Solution proposée au client",
-    linked_competencies: ["solution_client"],
-    sort_order: 5,
-  },
-  {
-    section_key: "satisfaction_client",
-    section_title: "Satisfaction client",
-    linked_competencies: ["satisfaction_client"],
-    sort_order: 6,
-  },
-  {
-    section_key: "amelioration_satisfaction",
-    section_title: "Amélioration de la satisfaction",
-    linked_competencies: ["amelioration_satisfaction"],
-    sort_order: 7,
-  },
-  {
-    section_key: "communication_professionnelle",
-    section_title: "Communication professionnelle",
-    linked_competencies: ["communication_professionnelle"],
-    sort_order: 8,
-  },
-  {
-    section_key: "bilan",
-    section_title: "Bilan de la situation",
-    linked_competencies: ["analyse_reflexive"],
-    sort_order: 9,
-  },
-];
-
-const FICHE_TEMPLATES = [
-  {
-    epreuve: "E31",
-    numero_fiche: 1,
-    title: "E31-1 — Préparer et présenter une situation de vente-conseil",
-    item_key: "E31-1",
-    item_label: "Préparer et présenter une situation de vente-conseil",
-    item_description:
-      "Présente le contexte professionnel, l’entreprise, le client, la situation commerciale et les conditions de l’entretien.",
-    sections: E31_SECTIONS,
-  },
-  {
-    epreuve: "E31",
-    numero_fiche: 2,
-    title: "E31-2 — Conduire l’entretien et proposer une offre adaptée",
-    item_key: "E31-2",
-    item_label: "Conduire l’entretien et proposer une offre adaptée",
-    item_description:
-      "Explique comment tu questionnes le client, identifies son besoin, proposes une offre adaptée et construis ton argumentation.",
-    sections: E31_SECTIONS,
-  },
-  {
-    epreuve: "E31",
-    numero_fiche: 3,
-    title: "E31-3 — Argumenter, finaliser et analyser la vente",
-    item_key: "E31-3",
-    item_label: "Argumenter, finaliser et analyser la vente",
-    item_description:
-      "Décris la finalisation de la vente, ta communication professionnelle, le résultat obtenu et ton bilan réflexif.",
-    sections: E31_SECTIONS,
-  },
-  {
-    epreuve: "E32",
-    numero_fiche: 1,
-    title: "E32-1 — Assurer le suivi d’une commande client",
-    item_key: "E32-1",
-    item_label: "Assurer le suivi d’une commande client",
-    item_description:
-      "Présente le suivi d’une commande, les outils utilisés, les étapes de contrôle et l’information transmise au client.",
-    sections: E32_SECTIONS,
-  },
-  {
-    epreuve: "E32",
-    numero_fiche: 2,
-    title: "E32-2 — Présenter les services associés à la vente",
-    item_key: "E32-2",
-    item_label: "Présenter les services associés à la vente",
-    item_description:
-      "Décris les services proposés autour de la vente : retrait, livraison, garantie, fidélisation, financement ou accompagnement.",
-    sections: E32_SECTIONS,
-  },
-  {
-    epreuve: "E32",
-    numero_fiche: 3,
-    title: "E32-3 — Traiter une demande, un retour ou une réclamation",
-    item_key: "E32-3",
-    item_label: "Traiter une demande, un retour ou une réclamation",
-    item_description:
-      "Explique la demande du client, le retour ou la réclamation rencontrée, puis la solution proposée et son suivi.",
-    sections: E32_SECTIONS,
-  },
-  {
-    epreuve: "E32",
-    numero_fiche: 4,
-    title: "E32-4 — Mesurer et améliorer la satisfaction client",
-    item_key: "E32-4",
-    item_label: "Mesurer et améliorer la satisfaction client",
-    item_description:
-      "Présente les indicateurs, retours clients ou outils utilisés pour mesurer la satisfaction et proposer des améliorations.",
-    sections: E32_SECTIONS,
-  },
-];
-
 async function createMissingFichesForStudent(
   admin: ReturnType<typeof createAdminClient>,
   studentId: string,
@@ -276,7 +106,9 @@ async function createMissingFichesForStudent(
     throw new Error("Impossible de générer les fiches : classe non renseignée.");
   }
 
-  for (const template of FICHE_TEMPLATES) {
+  const ficheDefinitions = getFicheDefinitionsForOption(mcvOption);
+
+  for (const template of ficheDefinitions) {
     const { data: existingFiche, error: existingFicheError } = await admin
       .from("fiches")
       .select("id")
