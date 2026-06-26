@@ -2,6 +2,7 @@ import Link from "next/link";
 import AppNavigation from "@/components/AppNavigation";
 import PasswordChangeForm from "@/components/PasswordChangeForm";
 import RecoveryEmailForm from "@/components/RecoveryEmailForm";
+import RecoveryEmailVerificationButton from "@/components/RecoveryEmailVerificationButton";
 import {
   type AccountContact,
   getMaskedAccountContact,
@@ -149,6 +150,17 @@ export default async function AccountPage() {
                           {getReadableContactPriority(contact)}
                         </span>
                       </div>
+                      {contact.contact_type === "email" && contact.verified_at && (
+                        <p className="mt-3 text-sm leading-6 text-slate-400">
+                          Adresse disponible pour les futurs mécanismes de récupération.
+                        </p>
+                      )}
+                      {contact.contact_type === "email" && (
+                        <RecoveryEmailVerificationButton
+                          contactId={contact.id}
+                          isVerified={Boolean(contact.verified_at)}
+                        />
+                      )}
                     </article>
                   ))}
                 </div>

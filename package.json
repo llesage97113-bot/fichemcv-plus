@@ -6,6 +6,7 @@
     "dev": "next dev",
     "test:auth-password-recovery": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/auth-password-recovery-build --noEmit false scripts/test_auth_password_recovery.ts src/lib/auth/passwordRecovery.ts && node tmp/auth-password-recovery-build/scripts/test_auth_password_recovery.js",
     "test:auth-contact-model": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/auth-contact-model-build --noEmit false scripts/test_auth_contact_model.ts src/lib/auth/contactNormalizers.ts && node tmp/auth-contact-model-build/scripts/test_auth_contact_model.js",
+    "test:contact-email-verification": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/contact-email-verification-build --noEmit false scripts/test_contact_email_verification.ts src/lib/auth/contactVerification.ts src/lib/auth/contactDisplay.ts && node tmp/contact-email-verification-build/scripts/test_contact_email_verification.js",
     "test:recovery-email": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/recovery-email-build --noEmit false scripts/test_recovery_email.ts src/lib/auth/recoveryEmail.ts src/lib/auth/contactNormalizers.ts && node tmp/recovery-email-build/scripts/test_recovery_email.js",
     "test:account-management": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/account-management-build --noEmit false scripts/test_account_management.ts src/lib/auth/accountManagement.ts src/lib/auth/contactDisplay.ts && node tmp/account-management-build/scripts/test_account_management.js",
     "test:auth-uuid-linking": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/auth-uuid-linking-build --noEmit false scripts/test_auth_uuid_linking.ts src/lib/auth/currentUserProfiles.ts && node tmp/auth-uuid-linking-build/scripts/test_auth_uuid_linking.js",
@@ -28,6 +29,7 @@
     "docxtemplater": "^3.69.0",
     "exceljs": "^4.4.0",
     "next": "16.2.6",
+    "nodemailer": "^9.0.1",
     "pizzip": "^3.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
@@ -36,6 +38,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
+    "@types/nodemailer": "^8.0.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
