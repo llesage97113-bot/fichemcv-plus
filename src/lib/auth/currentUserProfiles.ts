@@ -11,6 +11,8 @@ export type AppUserProfile = {
   email: string | null;
   role: string | null;
   is_active: boolean | null;
+  account_status?: string | null;
+  legacy_login_email?: string | null;
 };
 
 export type StudentProfile = {

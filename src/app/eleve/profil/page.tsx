@@ -1,6 +1,6 @@
 import Link from "next/link";
 import AppNavigation from "@/components/AppNavigation";
-import StudentPasswordChangeForm from "@/components/StudentPasswordChangeForm";
+import PasswordChangeForm from "@/components/PasswordChangeForm";
 import { requireRole } from "@/lib/auth/requireUser";
 import { createClient } from "@/lib/supabase/server";
 import { loadCurrentStudentProfile } from "@/lib/auth/currentUserProfiles";
@@ -65,7 +65,11 @@ export default async function StudentProfilePage() {
           </div>
         )}
 
-        {student && <StudentPasswordChangeForm />}
+        {student && (
+          <div className="mb-6">
+            <PasswordChangeForm description="Si ton professeur t’a transmis un mot de passe provisoire, remplace-le ici par un mot de passe personnel. La session reste ouverte après modification." />
+          </div>
+        )}
 
         {student && (
           <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-6 shadow-sm">

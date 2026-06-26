@@ -47,6 +47,7 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
 
   const isAdminHome = pathname === "/admin";
   const isAccountsSpace = pathname.startsWith("/admin/comptes");
+  const isAccountSpace = pathname === "/compte";
   const isTeacherSpace = pathname === "/" || pathname.startsWith("/fiches");
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -205,6 +206,20 @@ export default function AppNavigation({ maxWidth = "6xl" }: AppNavigationProps) 
             >
               Espace élève
             </Link>
+          )}
+
+          {!isCheckingSession && isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => navigateTo("/compte")}
+              className={`rounded-xl px-4 py-2 text-sm font-medium transition ${
+                isAccountSpace
+                  ? "border border-sky-300 bg-sky-500 text-white shadow shadow-sky-500/20 hover:bg-sky-400"
+                  : "border border-slate-700 bg-slate-950/40 text-slate-300 hover:bg-slate-800"
+              }`}
+            >
+              Mon compte
+            </button>
           )}
 
           {!isCheckingSession && !isAuthenticated && (
