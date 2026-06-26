@@ -334,81 +334,66 @@ export default async function AdminAccountsPage() {
         )}
 
         <section className="mb-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="min-h-[120px] rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Total comptes
             </p>
             <p className="mt-2 text-3xl font-bold text-slate-100">
               {stats.totalAccounts}
             </p>
-            <p className="mt-1 text-sm text-slate-400">Lignes app_users</p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="min-h-[120px] rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Élèves
             </p>
             <p className="mt-2 text-3xl font-bold text-amber-200">
               {stats.studentAccounts}
             </p>
-            <p className="mt-1 text-sm text-slate-400">
-              Comptes app_users student
-            </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="min-h-[120px] rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Professeurs
             </p>
             <p className="mt-2 text-3xl font-bold text-sky-200">
               {stats.teacherAccounts}
             </p>
-            <p className="mt-1 text-sm text-slate-400">
-              Comptes app_users teacher
-            </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="min-h-[120px] rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Profils à vérifier
             </p>
             <p className="mt-2 text-3xl font-bold text-red-200">
               {stats.profileIssues}
             </p>
-            <p className="mt-1 text-sm text-slate-400">
-              Manquants ou sans compte
-            </p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="min-h-[120px] rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Actifs
             </p>
             <p className="mt-2 text-3xl font-bold text-emerald-200">
               {stats.activeAccounts}
             </p>
-            <p className="mt-1 text-sm text-slate-400">is_active = true</p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+          <div className="min-h-[120px] rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Inactifs
             </p>
             <p className="mt-2 text-3xl font-bold text-red-200">
               {stats.inactiveAccounts}
             </p>
-            <p className="mt-1 text-sm text-slate-400">is_active = false</p>
           </div>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:col-span-2">
+          <div className="min-h-[120px] rounded-2xl border border-slate-800 bg-slate-900/60 p-5 md:col-span-2">
             <p className="text-xs uppercase tracking-wide text-slate-500">
               Comptes internes
             </p>
             <p className="mt-2 text-3xl font-bold text-purple-200">
               {stats.internalAccounts}
-            </p>
-            <p className="mt-1 text-sm text-slate-400">
-              Identifiants se terminant par @fichemcv.local
             </p>
           </div>
         </section>

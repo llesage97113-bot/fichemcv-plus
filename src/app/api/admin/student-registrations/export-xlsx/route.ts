@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentTeacherClassIds } from "@/lib/auth/currentUserProfiles";
 
 function formatDate(value: string | null) {
   if (!value) {
@@ -49,38 +50,13 @@ async function requireTeacher() {
 
 async function getTeacherClassIds(
   admin: ReturnType<typeof createAdminClient>,
-  teacherEmail: string | null | undefined
+  authUser: Awaited<ReturnType<typeof requireTeacher>>
 ) {
-  const { data: appUser } = await admin
-    .from("app_users")
-    .select("id")
-    .eq("email", teacherEmail ?? "")
-    .eq("role", "teacher")
-    .eq("is_active", true)
-    .single();
+  if (!authUser) {
+    return [];
+  }
 
-  const { data: teacherProfile } = appUser
-    ? await admin
-        .from("teachers")
-        .select("id")
-        .eq("user_id", appUser.id)
-        .single()
-    : { data: null };
-
-  const { data: teacherClasses } = teacherProfile
-    ? await admin
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", teacherProfile.id)
-    : { data: null };
-
-  return Array.from(
-    new Set(
-      (teacherClasses ?? [])
-        .map((item) => String(item.class_id ?? ""))
-        .filter(Boolean)
-    )
-  );
+  return getCurrentTeacherClassIds(admin, authUser);
 }
 
 export async function GET() {
@@ -94,7 +70,7 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
-  const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
+  const teacherClassIds = await getTeacherClassIds(admin, teacher);
 
   let studentsQuery = admin
     .from("students")

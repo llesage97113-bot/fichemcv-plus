@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getSafeRoleHomePath } from "@/lib/auth/getRoleHomePath";
 
 export type UserRole = "admin" | "professeur" | "eleve";
 
@@ -27,19 +28,7 @@ export async function requireRole(expectedRole: UserRole) {
   }
 
   if (role !== expectedRole) {
-    if (role === "admin") {
-      redirect("/admin");
-    }
-
-    if (role === "professeur") {
-      redirect("/");
-    }
-
-    if (role === "eleve") {
-      redirect("/eleve");
-    }
-
-    redirect("/login");
+    redirect(getSafeRoleHomePath(role));
   }
 
   return user;
@@ -54,19 +43,7 @@ export async function requireAnyRole(allowedRoles: UserRole[]) {
   }
 
   if (!allowedRoles.includes(role)) {
-    if (role === "admin") {
-      redirect("/admin");
-    }
-
-    if (role === "professeur") {
-      redirect("/");
-    }
-
-    if (role === "eleve") {
-      redirect("/eleve");
-    }
-
-    redirect("/login");
+    redirect(getSafeRoleHomePath(role));
   }
 
   return user;

@@ -6,6 +6,7 @@ import SubmitFicheButton from "@/components/SubmitFicheButton";
 import AppNavigation from "@/components/AppNavigation";
 import ActivityInfoEditor from "@/components/ActivityInfoEditor";
 import { requireRole } from "@/lib/auth/requireUser";
+import { loadCurrentStudentProfile } from "@/lib/auth/currentUserProfiles";
 
 function getGlobalProgressClasses(score: number) {
   if (score >= 80) {
@@ -118,25 +119,13 @@ export default async function StudentFicheDetailPage({
     .select("*")
     .eq("fiche_id", id);
 
-  const { data: appUser, error: appUserError } = await supabase
-    .from("app_users")
-    .select("id, email, role, is_active")
-    .eq("email", authUser.email ?? "")
-    .eq("role", "student")
-    .eq("is_active", true)
-    .single();
+  const { student: connectedStudent } = await loadCurrentStudentProfile(
+    supabase,
+    authUser,
+    "id"
+  );
 
-  if (appUserError || !appUser) {
-    notFound();
-  }
-
-  const { data: connectedStudent, error: connectedStudentError } = await supabase
-    .from("students")
-    .select("id")
-    .eq("user_id", appUser.id)
-    .single();
-
-  if (connectedStudentError || !connectedStudent) {
+  if (!connectedStudent) {
     notFound();
   }
 

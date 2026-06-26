@@ -9,6 +9,7 @@ import AppNavigation from "@/components/AppNavigation";
 import ActivityInfoReadOnly from "@/components/ActivityInfoReadOnly";
 import { requireRole } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentTeacherClassIds } from "@/lib/auth/currentUserProfiles";
 
 const TEACHER_FEEDBACK_EDITABLE_STATUSES = [
   "soumise",
@@ -108,38 +109,9 @@ function normalizeMcvOption(value: unknown) {
 
 async function getTeacherClassIds(
   admin: ReturnType<typeof createAdminClient>,
-  teacherEmail: string | null | undefined
+  authUser: Awaited<ReturnType<typeof requireRole>>
 ) {
-  const { data: appUser } = await admin
-    .from("app_users")
-    .select("id")
-    .eq("email", teacherEmail ?? "")
-    .eq("role", "teacher")
-    .eq("is_active", true)
-    .single();
-
-  const { data: teacherProfile } = appUser
-    ? await admin
-        .from("teachers")
-        .select("id")
-        .eq("user_id", appUser.id)
-        .single()
-    : { data: null };
-
-  const { data: teacherClasses } = teacherProfile
-    ? await admin
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", teacherProfile.id)
-    : { data: null };
-
-  return Array.from(
-    new Set(
-      (teacherClasses ?? [])
-        .map((item) => String(item.class_id ?? ""))
-        .filter(Boolean)
-    )
-  );
+  return getCurrentTeacherClassIds(admin, authUser);
 }
 
 function FinalExportActions({
@@ -250,7 +222,7 @@ export default async function FicheDetailPage({
   const teacherClassIds =
     authUser.app_metadata?.role === "admin"
       ? []
-      : await getTeacherClassIds(admin, authUser.email);
+      : await getTeacherClassIds(admin, authUser);
 
   let ficheQuery = supabase
     .from("teacher_fiche_dashboard")

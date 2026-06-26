@@ -3,43 +3,23 @@ import PendingStudentRegistrations from "@/components/PendingStudentRegistration
 import ClassRegistrationManager from "@/components/ClassRegistrationManager";
 import { supabase } from "@/lib/supabaseClient";
 import AppNavigation from "@/components/AppNavigation";
-import { requireRole } from "@/lib/auth/requireUser";
+import { redirect } from "next/navigation";
+import { requireUser } from "@/lib/auth/requireUser";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentTeacherClassIds } from "@/lib/auth/currentUserProfiles";
+import { getRootRoleRedirectPath } from "@/lib/auth/getRoleHomePath";
 
 export default async function Home() {
-  const authUser = await requireRole("professeur");
+  const authUser = await requireUser();
+  const rootRedirectPath = getRootRoleRedirectPath(authUser.app_metadata?.role);
+
+  if (rootRedirectPath) {
+    redirect(rootRedirectPath);
+  }
+
   const admin = createAdminClient();
 
-  const { data: appUser } = await admin
-    .from("app_users")
-    .select("id")
-    .eq("email", authUser.email ?? "")
-    .eq("role", "teacher")
-    .eq("is_active", true)
-    .single();
-
-  const { data: teacherProfile } = appUser
-    ? await admin
-        .from("teachers")
-        .select("id")
-        .eq("user_id", appUser.id)
-        .single()
-    : { data: null };
-
-  const { data: teacherClasses } = teacherProfile
-    ? await admin
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", teacherProfile.id)
-    : { data: null };
-
-  const teacherClassIds = Array.from(
-    new Set(
-      (teacherClasses ?? [])
-        .map((item) => String(item.class_id ?? ""))
-        .filter(Boolean)
-    )
-  );
+  const teacherClassIds = await getCurrentTeacherClassIds(admin, authUser);
 
   let ficheQuery = supabase
     .from("teacher_fiche_dashboard")

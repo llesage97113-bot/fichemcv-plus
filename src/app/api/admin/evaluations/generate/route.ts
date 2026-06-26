@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
+import {
+  getCurrentTeacherClassIds,
+  loadCurrentAppUser,
+} from "@/lib/auth/currentUserProfiles";
 
 async function requireTeacherOrAdmin() {
   const supabase = await createClient();
@@ -21,38 +25,13 @@ async function requireTeacherOrAdmin() {
 
 async function getTeacherClassIds(
   admin: ReturnType<typeof createAdminClient>,
-  teacherEmail: string | null | undefined
+  authUser: Awaited<ReturnType<typeof requireTeacherOrAdmin>>
 ) {
-  const { data: appUser } = await admin
-    .from("app_users")
-    .select("id")
-    .eq("email", teacherEmail ?? "")
-    .eq("role", "teacher")
-    .eq("is_active", true)
-    .single();
+  if (!authUser) {
+    return [];
+  }
 
-  const { data: teacherProfile } = appUser
-    ? await admin
-        .from("teachers")
-        .select("id")
-        .eq("user_id", appUser.id)
-        .single()
-    : { data: null };
-
-  const { data: teacherClasses } = teacherProfile
-    ? await admin
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", teacherProfile.id)
-    : { data: null };
-
-  return Array.from(
-    new Set(
-      (teacherClasses ?? [])
-        .map((item) => String(item.class_id ?? ""))
-        .filter(Boolean)
-    )
-  );
+  return getCurrentTeacherClassIds(admin, authUser);
 }
 
 function isTeacherAllowedForClass(
@@ -183,23 +162,15 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
   const authRole = teacher.app_metadata?.role;
 
-  const { data: teacherAppUser, error: teacherAppUserError } = await admin
-    .from("app_users")
-    .select("id, email, role, is_active")
-    .eq("email", teacher.email ?? "")
-    .eq("is_active", true)
-    .maybeSingle();
+  const teacherAppUser = await loadCurrentAppUser(admin, teacher);
 
   if (
-    teacherAppUserError ||
     !teacherAppUser ||
     (authRole === "professeur" && teacherAppUser.role !== "teacher")
   ) {
     return NextResponse.json(
       {
-        error:
-          teacherAppUserError?.message ??
-          "Compte professeur introuvable dans app_users.",
+        error: "Compte courant introuvable dans app_users.",
       },
       { status: 403 }
     );
@@ -221,7 +192,7 @@ export async function POST(request: Request) {
   }
 
   if (authRole !== "admin") {
-    const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
+    const teacherClassIds = await getTeacherClassIds(admin, teacher);
 
     if (!isTeacherAllowedForClass(teacherClassIds, fiche.class_id)) {
       return NextResponse.json(
@@ -361,7 +332,7 @@ export async function GET(request: Request) {
   }
 
   if (teacher.app_metadata?.role !== "admin") {
-    const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
+    const teacherClassIds = await getTeacherClassIds(admin, teacher);
 
     if (!isTeacherAllowedForClass(teacherClassIds, fiche.class_id)) {
       return NextResponse.json(

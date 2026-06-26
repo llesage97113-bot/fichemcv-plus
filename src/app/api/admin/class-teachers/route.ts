@@ -51,34 +51,6 @@ async function ensureTeacherProfile(
     return existingTeacher;
   }
 
-  const { data: teacherByEmail, error: teacherByEmailError } = await admin
-    .from("teachers")
-    .select("id, user_id, email")
-    .eq("email", appUser.email)
-    .maybeSingle();
-
-  if (teacherByEmailError) {
-    throw new Error(teacherByEmailError.message);
-  }
-
-  if (teacherByEmail) {
-    const { data: updatedTeacher, error: updateError } = await admin
-      .from("teachers")
-      .update({
-        user_id: appUser.id,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("id", teacherByEmail.id)
-      .select("id, user_id, email")
-      .single();
-
-    if (updateError || !updatedTeacher) {
-      throw new Error(updateError?.message ?? "Synchronisation professeur impossible.");
-    }
-
-    return updatedTeacher;
-  }
-
   const { firstName, lastName } = buildTeacherDisplayName(appUser.email);
 
   const { data: createdTeacher, error: createError } = await admin

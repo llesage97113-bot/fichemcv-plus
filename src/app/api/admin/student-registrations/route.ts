@@ -6,6 +6,7 @@ import {
   isMcvOption,
   type McvOption,
 } from "@/lib/ficheDefinitions";
+import { getCurrentTeacherClassIds } from "@/lib/auth/currentUserProfiles";
 
 async function requireTeacher() {
   const supabase = await createClient();
@@ -55,38 +56,13 @@ function getRegistrationClass(registration: {
 
 async function getTeacherClassIds(
   admin: ReturnType<typeof createAdminClient>,
-  teacherEmail: string | null | undefined
+  authUser: Awaited<ReturnType<typeof requireTeacher>>
 ) {
-  const { data: appUser } = await admin
-    .from("app_users")
-    .select("id")
-    .eq("email", teacherEmail ?? "")
-    .eq("role", "teacher")
-    .eq("is_active", true)
-    .single();
+  if (!authUser) {
+    return [];
+  }
 
-  const { data: teacherProfile } = appUser
-    ? await admin
-        .from("teachers")
-        .select("id")
-        .eq("user_id", appUser.id)
-        .single()
-    : { data: null };
-
-  const { data: teacherClasses } = teacherProfile
-    ? await admin
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", teacherProfile.id)
-    : { data: null };
-
-  return Array.from(
-    new Set(
-      (teacherClasses ?? [])
-        .map((item) => String(item.class_id ?? ""))
-        .filter(Boolean)
-    )
-  );
+  return getCurrentTeacherClassIds(admin, authUser);
 }
 
 function isTeacherAllowedForClass(
@@ -183,7 +159,7 @@ export async function GET() {
   }
 
   const admin = createAdminClient();
-  const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
+  const teacherClassIds = await getTeacherClassIds(admin, teacher);
 
   let registrationsQuery = admin
     .from("students")
@@ -292,7 +268,7 @@ export async function POST(request: Request) {
   }
 
   const admin = createAdminClient();
-  const teacherClassIds = await getTeacherClassIds(admin, teacher.email);
+  const teacherClassIds = await getTeacherClassIds(admin, teacher);
   const body = await request.json().catch(() => null);
 
   const studentId = String(body?.studentId ?? "");

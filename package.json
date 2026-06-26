@@ -4,7 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "test:auth-password-recovery": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/auth-password-recovery-build --noEmit false scripts/test_auth_password_recovery.ts src/lib/auth/passwordRecovery.ts && node tmp/auth-password-recovery-build/scripts/test_auth_password_recovery.js",
     "test:auth-contact-model": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/auth-contact-model-build --noEmit false scripts/test_auth_contact_model.ts src/lib/auth/contactNormalizers.ts && node tmp/auth-contact-model-build/scripts/test_auth_contact_model.js",
+    "test:auth-uuid-linking": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/auth-uuid-linking-build --noEmit false scripts/test_auth_uuid_linking.ts src/lib/auth/currentUserProfiles.ts && node tmp/auth-uuid-linking-build/scripts/test_auth_uuid_linking.js",
+    "test:auth-role-redirects": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/auth-role-redirects-build --noEmit false scripts/test_auth_role_redirects.ts src/lib/auth/getRoleHomePath.ts && node tmp/auth-role-redirects-build/scripts/test_auth_role_redirects.js",
     "test:fiche-definitions": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/fiche-definitions-build --noEmit false scripts/test_fiche_definitions.ts src/lib/ficheDefinitions.ts && node tmp/fiche-definitions-build/scripts/test_fiche_definitions.js",
     "build": "next build",
     "test:export-word": "tsc --module commonjs --target ES2020 --esModuleInterop --skipLibCheck --outDir tmp/export-word-build --noEmit false scripts/test_generate_e31_word.ts src/lib/exports/generateArchivedFicheDocx.ts src/lib/exports/ficheExportTypes.ts && node tmp/export-word-build/scripts/test_generate_e31_word.js",

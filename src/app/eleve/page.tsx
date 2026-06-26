@@ -2,6 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import AppNavigation from "@/components/AppNavigation";
 import { requireRole } from "@/lib/auth/requireUser";
+import { loadCurrentStudentProfile } from "@/lib/auth/currentUserProfiles";
 
 function getProgressClasses(score: number) {
   if (score >= 80) {
@@ -107,29 +108,9 @@ export default async function StudentDashboardPage() {
   let student = null;
   let studentErrorMessage = "";
 
-  const { data: appUser, error: appUserError } = await supabase
-    .from("app_users")
-    .select("id, email, role, is_active")
-    .eq("email", authUser.email ?? "")
-    .eq("role", "student")
-    .eq("is_active", true)
-    .single();
-
-  if (appUserError || !appUser) {
-    studentErrorMessage = "Aucun profil élève actif n’est associé à ce compte.";
-  } else {
-    const { data: connectedStudent, error: connectedStudentError } = await supabase
-      .from("students")
-      .select("id, first_name, last_name, candidate_number, student_code, registration_status")
-      .eq("user_id", appUser.id)
-      .single();
-
-    student = connectedStudent;
-
-    if (connectedStudentError || !connectedStudent) {
-      studentErrorMessage = "Aucune fiche élève n’est rattachée à ce compte.";
-    }
-  }
+  const currentStudent = await loadCurrentStudentProfile(supabase, authUser);
+  student = currentStudent.student;
+  studentErrorMessage = currentStudent.errorMessage;
 
   const { data, error } = student
     ? await supabase

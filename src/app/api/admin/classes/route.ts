@@ -3,6 +3,10 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isMcvOption } from "@/lib/ficheDefinitions";
 import { normalizeRegistrationCode } from "@/lib/normalizers";
+import {
+  getCurrentTeacherClassIds,
+  loadCurrentTeacherProfile,
+} from "@/lib/auth/currentUserProfiles";
 
 async function requireTeacher() {
   const supabase = await createClient();
@@ -21,30 +25,16 @@ async function requireTeacher() {
 
 async function getTeacherProfile(
   admin: ReturnType<typeof createAdminClient>,
-  teacherEmail: string | null | undefined
+  authUser: Awaited<ReturnType<typeof requireTeacher>>
 ) {
-  const { data: appUser, error: appUserError } = await admin
-    .from("app_users")
-    .select("id")
-    .eq("email", teacherEmail ?? "")
-    .eq("role", "teacher")
-    .eq("is_active", true)
-    .single();
-
-  if (appUserError || !appUser) {
-    throw new Error(appUserError?.message ?? "Compte professeur introuvable.");
+  if (!authUser) {
+    throw new Error("Compte professeur introuvable.");
   }
 
-  const { data: teacherProfile, error: teacherProfileError } = await admin
-    .from("teachers")
-    .select("id")
-    .eq("user_id", appUser.id)
-    .single();
+  const teacherProfile = await loadCurrentTeacherProfile(admin, authUser);
 
-  if (teacherProfileError || !teacherProfile) {
-    throw new Error(
-      teacherProfileError?.message ?? "Profil professeur introuvable."
-    );
+  if (!teacherProfile) {
+    throw new Error("Profil professeur introuvable.");
   }
 
   return teacherProfile;
@@ -69,36 +59,7 @@ export async function GET() {
 
   const admin = createAdminClient();
 
-  const { data: appUser } = await admin
-    .from("app_users")
-    .select("id")
-    .eq("email", teacher.email ?? "")
-    .eq("role", "teacher")
-    .eq("is_active", true)
-    .single();
-
-  const { data: teacherProfile } = appUser
-    ? await admin
-        .from("teachers")
-        .select("id")
-        .eq("user_id", appUser.id)
-        .single()
-    : { data: null };
-
-  const { data: teacherClasses } = teacherProfile
-    ? await admin
-        .from("class_teachers")
-        .select("class_id")
-        .eq("teacher_id", teacherProfile.id)
-    : { data: null };
-
-  const teacherClassIds = Array.from(
-    new Set(
-      (teacherClasses ?? [])
-        .map((item) => String(item.class_id ?? ""))
-        .filter(Boolean)
-    )
-  );
+  const teacherClassIds = await getCurrentTeacherClassIds(admin, teacher);
 
   let classesQuery = admin
     .from("classes")
@@ -225,7 +186,7 @@ export async function POST(request: Request) {
   let teacherProfile: { id: string };
 
   try {
-    teacherProfile = await getTeacherProfile(admin, teacher.email);
+    teacherProfile = await getTeacherProfile(admin, teacher);
   } catch (error) {
     return NextResponse.json(
       {
