@@ -1,6 +1,7 @@
 import Link from "next/link";
 import AppNavigation from "@/components/AppNavigation";
 import PasswordChangeForm from "@/components/PasswordChangeForm";
+import RecoveryEmailForm from "@/components/RecoveryEmailForm";
 import {
   type AccountContact,
   getMaskedAccountContact,
@@ -111,8 +112,16 @@ export default async function AccountPage() {
                   </h2>
                 </div>
                 <span className="rounded-full border border-slate-700 px-3 py-1 text-xs font-medium text-slate-300">
-                  Fonction bientôt disponible
+                  Téléphone bientôt disponible
                 </span>
+              </div>
+
+              <div className="mb-5 rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <RecoveryEmailForm />
+                <p className="mt-3 text-sm leading-6 text-slate-400">
+                  L’adresse enregistrée ne sera utilisable pour la récupération
+                  du compte qu’après vérification.
+                </p>
               </div>
 
               {overview.contacts.length === 0 ? (
@@ -144,6 +153,10 @@ export default async function AccountPage() {
                   ))}
                 </div>
               )}
+
+              <p className="mt-4 rounded-xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-slate-400">
+                Le téléphone de récupération sera ajouté dans un prochain patch.
+              </p>
             </section>
 
             <PasswordChangeForm />

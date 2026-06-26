@@ -422,8 +422,13 @@ function assertSourceFiles() {
   );
   assertIncludes(
     page,
-    "Fonction bientôt disponible",
-    "Les futurs ajouts doivent être préparés sans bouton fonctionnel"
+    "Téléphone bientôt disponible",
+    "Le téléphone doit rester préparé comme fonctionnalité future"
+  );
+  assertIncludes(
+    page,
+    "RecoveryEmailForm",
+    "La page /compte doit intégrer le formulaire d'email de récupération"
   );
 
   assertIncludes(
