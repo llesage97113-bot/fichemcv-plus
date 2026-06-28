@@ -2,10 +2,19 @@ import { NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import {
   normalizeEmail,
-  normalizeIdentifierPart,
   normalizePersonName,
   normalizeRegistrationCode,
 } from "@/lib/normalizers";
+import {
+  buildInternalStudentEmail,
+  generateUniqueStudentLoginIdentifier,
+  type IdentifierAvailabilityClient,
+} from "@/lib/auth/studentLoginIdentifier";
+import {
+  saveRecoveryEmailForUser,
+  validateRecoveryEmail,
+  type RecoveryEmailClient,
+} from "@/lib/auth/recoveryEmail";
 
 function generateStudentCode() {
   const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -18,44 +27,10 @@ function generateStudentCode() {
   return code;
 }
 
-async function generateUniqueEmail(
-  admin: ReturnType<typeof createAdminClient>,
-  firstName: string,
-  lastName: string
-) {
-  const first = normalizeIdentifierPart(firstName);
-  const last = normalizeIdentifierPart(lastName);
-
-  let base = first && last ? `${first}.${last}` : `eleve.${crypto.randomUUID().slice(0, 8)}`;
-  let email = `${base}@fichemcv.local`;
-  let suffix = 2;
-
-  while (true) {
-    const { data: existingAppUser } = await admin
-      .from("app_users")
-      .select("id")
-      .eq("email", email)
-      .maybeSingle();
-
-    const { data: existingAuthUser } =
-      await admin.auth.admin.listUsers();
-
-    const existsInAuth = existingAuthUser.users.some(
-      (user) => user.email?.toLowerCase() === email.toLowerCase()
-    );
-
-    if (!existingAppUser && !existsInAuth) {
-      return email;
-    }
-
-    email = `${base}.${suffix}@fichemcv.local`;
-    suffix += 1;
-  }
-}
-
 export async function POST(request: Request) {
   const admin = createAdminClient();
 
+  try {
   const body = await request.json().catch(() => null);
 
   const firstName = normalizePersonName(String(body?.firstName ?? ""));
@@ -65,6 +40,8 @@ export async function POST(request: Request) {
   );
   const password = String(body?.password ?? "");
   const confirmPassword = String(body?.confirmPassword ?? "");
+  const personalEmailInput = String(body?.personalEmail ?? "");
+  const useEmailForRecovery = Boolean(body?.useEmailForRecovery);
 
   if (!firstName || !lastName || !registrationCode || !password) {
     return NextResponse.json(
@@ -85,6 +62,21 @@ export async function POST(request: Request) {
       { error: "Les deux mots de passe ne correspondent pas." },
       { status: 400 }
     );
+  }
+
+  let normalizedPersonalEmail: string | null = null;
+
+  if (personalEmailInput.trim()) {
+    const validation = validateRecoveryEmail(personalEmailInput);
+
+    if (!validation.ok) {
+      return NextResponse.json(
+        { error: validation.message, code: validation.code },
+        { status: 400 }
+      );
+    }
+
+    normalizedPersonalEmail = validation.email;
   }
 
   const { data: classData, error: classError } = await admin
@@ -138,7 +130,11 @@ export async function POST(request: Request) {
     );
   }
 
-  const email = normalizeEmail(await generateUniqueEmail(admin, firstName, lastName));
+  const loginIdentifier = await generateUniqueStudentLoginIdentifier(
+    admin as unknown as IdentifierAvailabilityClient,
+    firstName
+  );
+  const email = normalizeEmail(buildInternalStudentEmail(loginIdentifier));
   const studentCode = generateStudentCode();
 
   const { data: authData, error: authError } =
@@ -178,6 +174,24 @@ export async function POST(request: Request) {
     );
   }
 
+  const { error: reservationError } = await admin
+    .from("student_login_identifiers")
+    .insert({
+      identifier: loginIdentifier,
+      auth_email: email,
+      user_id: appUser.id,
+    });
+
+  if (reservationError) {
+    await admin.from("app_users").delete().eq("id", appUser.id);
+    await admin.auth.admin.deleteUser(authData.user.id);
+
+    return NextResponse.json(
+      { error: "Réservation de l’identifiant impossible." },
+      { status: 500 }
+    );
+  }
+
   const { error: studentError } = await admin
     .from("students")
     .insert({
@@ -201,11 +215,47 @@ export async function POST(request: Request) {
     );
   }
 
+  let recoveryContactMessage =
+    "Aucune adresse personnelle n’a été enregistrée. Tu pourras en ajouter une plus tard depuis /compte.";
+
+  if (normalizedPersonalEmail) {
+    const contactResult = await saveRecoveryEmailForUser(
+      admin as unknown as RecoveryEmailClient,
+      appUser.id,
+      normalizedPersonalEmail,
+      { canBeUsedForRecovery: useEmailForRecovery }
+    );
+
+    if (!contactResult.ok) {
+      await admin.from("app_users").delete().eq("id", appUser.id);
+      await admin.auth.admin.deleteUser(authData.user.id);
+
+      return NextResponse.json(
+        { error: contactResult.message, code: contactResult.code },
+        { status: contactResult.code === "conflict" ? 409 : 400 }
+      );
+    }
+
+    recoveryContactMessage = useEmailForRecovery
+      ? "Adresse personnelle enregistrée. Elle devra être vérifiée pour récupérer ton compte."
+      : "Adresse personnelle enregistrée. Elle ne sera pas utilisée pour récupérer ton compte sans ton accord.";
+  }
+
   return NextResponse.json({
     email,
+    loginIdentifier,
     className: classData.name,
     schoolYear: classData.school_year,
+    hasRecoveryEmail: Boolean(normalizedPersonalEmail),
+    canRecoverWithEmail: Boolean(normalizedPersonalEmail && useEmailForRecovery),
+    recoveryContactMessage,
     message:
       "Compte créé. Ton inscription est en attente de validation par le professeur.",
   });
+  } catch {
+    return NextResponse.json(
+      { error: "Création du compte impossible pour le moment." },
+      { status: 500 }
+    );
+  }
 }

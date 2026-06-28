@@ -25,6 +25,13 @@ type FicheDashboardItem = {
 
 type TeacherDashboardProps = {
   fiches: FicheDashboardItem[];
+  studentLoginIdentifiers?: StudentLoginIdentifierItem[];
+};
+
+type StudentLoginIdentifierItem = {
+  student_id: string;
+  identifier: string | null;
+  legacy_identifier: string | null;
 };
 
 type StatusGroup = "all" | "to_process" | "waiting_student" | "finalized" | "drafts";
@@ -144,12 +151,29 @@ function getProgressClasses(score: number) {
   return { text: "text-slate-400", bar: "bg-slate-500", track: "bg-slate-800" };
 }
 
-export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
+export default function TeacherDashboard({
+  fiches,
+  studentLoginIdentifiers = [],
+}: TeacherDashboardProps) {
   const [classFilter, setClassFilter] = useState("all");
   const [epreuveFilter, setEpreuveFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState<StatusGroup>("all");
   const [selectedStudentKey, setSelectedStudentKey] = useState<string | null>(null);
   const [selectedStudentLabel, setSelectedStudentLabel] = useState("");
+  const [loginIdentifiersByStudent, setLoginIdentifiersByStudent] = useState(() => {
+    return new Map(
+      studentLoginIdentifiers.map((item) => [
+        item.student_id,
+        {
+          identifier: item.identifier,
+          legacyIdentifier: item.legacy_identifier,
+          message: "",
+        },
+      ])
+    );
+  });
+  const [pendingLoginStudentId, setPendingLoginStudentId] = useState<string | null>(null);
+  const [loginIdentifierError, setLoginIdentifierError] = useState("");
 
   const epreuves = useMemo(() => {
     return Array.from(
@@ -362,6 +386,47 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
     });
   }
 
+  async function createShortLoginIdentifier(studentId: string) {
+    setPendingLoginStudentId(studentId);
+    setLoginIdentifierError("");
+
+    const response = await fetch("/api/admin/students/short-login-identifier", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ studentId }),
+    }).catch(() => null);
+
+    const payload = (await response?.json().catch(() => null)) as {
+      identifier?: string;
+      legacyIdentifier?: string;
+      message?: string;
+      error?: string;
+    } | null;
+
+    setPendingLoginStudentId(null);
+
+    if (!response?.ok || !payload?.identifier) {
+      setLoginIdentifierError(
+        payload?.error || "Création de l’identifiant court impossible."
+      );
+      return;
+    }
+
+    setLoginIdentifiersByStudent((current) => {
+      const next = new Map(current);
+      next.set(studentId, {
+        identifier: payload.identifier ?? null,
+        legacyIdentifier: payload.legacyIdentifier ?? null,
+        message:
+          payload.message ||
+          "Le compte et les données existantes n’ont pas été recréés.",
+      });
+      return next;
+    });
+  }
+
   return (
     <>
       <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -528,12 +593,20 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
         ) : (
           <div>
             <h3 className="mb-2 text-sm font-semibold text-slate-200">Élèves</h3>
+            {loginIdentifierError && (
+              <p className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                {loginIdentifierError}
+              </p>
+            )}
             <div className="grid gap-3 lg:grid-cols-2">
-              {studentSummaries.map((summary) => (
-                <article
-                  key={summary.key}
-                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
-                >
+              {studentSummaries.map((summary) => {
+                const loginIdentifier = loginIdentifiersByStudent.get(summary.key);
+
+                return (
+                  <article
+                    key={summary.key}
+                    className="rounded-xl border border-slate-800 bg-slate-950/60 p-4"
+                  >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                     <div>
                       <p className="font-semibold text-slate-100">
@@ -557,6 +630,43 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                     </button>
                   </div>
 
+                  <div className="mt-4 rounded-lg border border-slate-800 bg-slate-900/70 p-3">
+                    <p className="text-xs font-medium uppercase tracking-wide text-slate-500">
+                      Identifiant élève
+                    </p>
+                    {loginIdentifier?.identifier ? (
+                      <div className="mt-2 space-y-1 text-sm">
+                        <p className="font-mono font-semibold text-emerald-200">
+                          {loginIdentifier.identifier}
+                        </p>
+                        {loginIdentifier.legacyIdentifier && (
+                          <p className="break-words text-xs text-slate-400">
+                            Ancien identifiant encore valide :{" "}
+                            <span className="font-mono">
+                              {loginIdentifier.legacyIdentifier}
+                            </span>
+                          </p>
+                        )}
+                        {loginIdentifier.message && (
+                          <p className="text-xs text-emerald-200/80">
+                            {loginIdentifier.message}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => createShortLoginIdentifier(summary.key)}
+                        disabled={pendingLoginStudentId === summary.key}
+                        className="mt-2 rounded-lg border border-emerald-500/40 px-3 py-2 text-xs font-semibold text-emerald-200 transition hover:bg-emerald-950/40 disabled:cursor-not-allowed disabled:opacity-60"
+                      >
+                        {pendingLoginStudentId === summary.key
+                          ? "Création..."
+                          : "Créer un identifiant court"}
+                      </button>
+                    )}
+                  </div>
+
                   <div className="mt-4 grid grid-cols-2 gap-2 text-xs text-slate-300 sm:grid-cols-4">
                     <span>{summary.started}/{summary.total} démarrée(s)</span>
                     <span>{summary.toProcess} à traiter</span>
@@ -567,8 +677,9 @@ export default function TeacherDashboard({ fiches }: TeacherDashboardProps) {
                   <p className="mt-3 text-xs text-slate-500">
                     Dernière activité : {formatActivityDate(summary.latestActivityAt)}
                   </p>
-                </article>
-              ))}
+                  </article>
+                );
+              })}
             </div>
           </div>
         )}

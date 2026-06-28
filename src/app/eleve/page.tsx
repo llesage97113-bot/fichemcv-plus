@@ -3,6 +3,11 @@ import { createClient } from "@/lib/supabase/server";
 import AppNavigation from "@/components/AppNavigation";
 import { requireRole } from "@/lib/auth/requireUser";
 import { loadCurrentStudentProfile } from "@/lib/auth/currentUserProfiles";
+import {
+  hasRecoveryEmailContact,
+  hasVerifiedRecoveryEmail,
+  type AccountContact,
+} from "@/lib/auth/accountManagement";
 
 function getProgressClasses(score: number) {
   if (score >= 80) {
@@ -121,6 +126,15 @@ export default async function StudentDashboardPage() {
         .order("numero_fiche", { ascending: true })
     : { data: null, error: null };
 
+  const { data: contactRows } = await supabase
+    .from("user_contacts")
+    .select("id, contact_type, contact_value, normalized_value, is_primary, can_be_used_for_recovery, verified_at")
+    .eq("user_id", authUser.id)
+    .eq("contact_type", "email");
+  const contacts = (Array.isArray(contactRows) ? contactRows : []) as AccountContact[];
+  const shouldShowRecoveryReminder = !hasVerifiedRecoveryEmail(contacts);
+  const hasRecoveryContact = hasRecoveryEmailContact(contacts);
+
   const studentFullName = student
     ? `${student.first_name} ${student.last_name}`
     : "Élève non rattaché";
@@ -179,6 +193,33 @@ export default async function StudentDashboardPage() {
               avant que tes fiches soient accessibles. Tu peux revenir plus tard ou demander
               confirmation à ton professeur.
             </p>
+          </section>
+        )}
+
+        {shouldShowRecoveryReminder && (
+          <section className="mb-6 rounded-2xl border border-amber-500/40 bg-amber-500/10 p-5 shadow-sm">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-wide text-amber-200">
+                  Sécurité du compte
+                </p>
+                <h2 className="mt-2 text-xl font-bold text-amber-100">
+                  Sécurise ton compte
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-amber-100/85">
+                  Ton adresse mail n’est pas encore vérifiée. Sans adresse
+                  vérifiée, tu ne pourras pas récupérer ton mot de passe en cas
+                  d’oubli.
+                </p>
+              </div>
+
+              <Link
+                href="/compte"
+                className="inline-flex shrink-0 items-center justify-center rounded-lg bg-amber-400 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-amber-300"
+              >
+                {hasRecoveryContact ? "Vérifier mon adresse" : "Ajouter une adresse"}
+              </Link>
+            </div>
           </section>
         )}
 

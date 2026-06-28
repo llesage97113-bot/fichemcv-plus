@@ -4,7 +4,6 @@ import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearSupabaseAuthStorage, createClient } from "@/lib/supabase/client";
-import { normalizeEmail } from "@/lib/normalizers";
 import { getRoleHomePath } from "@/lib/auth/getRoleHomePath";
 
 type ExistingSession = {
@@ -16,7 +15,7 @@ export default function LoginPage() {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
 
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSigningOut, setIsSigningOut] = useState(false);
@@ -91,34 +90,30 @@ export default function LoginPage() {
     setIsLoading(true);
     setErrorMessage("");
 
-    const normalizedEmail = normalizeEmail(email);
+    const response = await fetch("/api/auth/login", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ identifier, password }),
+    }).catch(() => null);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: normalizedEmail,
-      password,
-    });
+    const payload = (await response?.json().catch(() => null)) as {
+      error?: string;
+    } | null;
+
+    if (!response?.ok) {
+      setIsLoading(false);
+      setErrorMessage(
+        payload?.error ||
+          "Connexion impossible. Vérifie ton identifiant et ton mot de passe."
+      );
+      return;
+    }
 
     setIsLoading(false);
 
-    if (error) {
-      setErrorMessage(
-        "Connexion impossible. Vérifie ton identifiant et ton mot de passe."
-      );
-      return;
-    }
-
-    const role = data.user?.app_metadata?.role;
-    const homePath = getRoleHomePath(role);
-
-    if (!homePath) {
-      await supabase.auth.signOut().catch(() => null);
-      setErrorMessage(
-        "Connexion refusée : rôle utilisateur inconnu. Contacte l’administrateur de l’application."
-      );
-      return;
-    }
-
-    router.push(homePath);
+    router.push("/");
     router.refresh();
   }
 
@@ -172,21 +167,21 @@ export default function LoginPage() {
                   htmlFor="email"
                   className="mb-1 block text-sm font-medium text-slate-200"
                 >
-                  Adresse email
+                  Identifiant
                 </label>
                 <input
                   id="email"
-                  type="email"
-                  autoComplete="email"
+                  type="text"
+                  autoComplete="username"
                   autoCapitalize="none"
                   autoCorrect="off"
                   spellCheck={false}
                   inputMode="email"
                   required
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  value={identifier}
+                  onChange={(event) => setIdentifier(event.target.value)}
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-400"
-                  placeholder="exemple@domaine.fr"
+                  placeholder="lea4827 ou exemple@domaine.fr"
                 />
               </div>
 

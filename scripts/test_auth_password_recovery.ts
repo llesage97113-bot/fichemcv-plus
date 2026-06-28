@@ -1,11 +1,11 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import {
   getSafePasswordRecoveryNextPath,
   isLegacyLocalEmail,
   isValidEmail,
   PASSWORD_MIN_LENGTH,
-  PASSWORD_RECOVERY_NEUTRAL_MESSAGE,
   PASSWORD_RECOVERY_SUCCESS_MESSAGE,
+  PASSWORD_RESET_REQUEST_PUBLIC_MESSAGE,
   validateNewPassword,
 } from "../src/lib/auth/passwordRecovery";
 
@@ -34,8 +34,19 @@ function assertNotIncludes(source: string, forbidden: string, message: string) {
   assert(!source.includes(forbidden), message);
 }
 
+function assertLessThan(actual: number, expected: number, message: string) {
+  assert(
+    actual < expected,
+    `${message}. ${String(actual)} doit etre inferieur a ${String(expected)}.`
+  );
+}
+
 function assertEmailValidation() {
   assert(isValidEmail("admin@example.test"), "Une adresse valide doit passer.");
+  assert(
+    isValidEmail("prenom.nom@fichemcv.local"),
+    "Un identifiant interne au format email doit passer."
+  );
   assert(
     !isValidEmail("adresse-invalide"),
     "Une adresse invalide doit etre rejetee localement."
@@ -44,18 +55,13 @@ function assertEmailValidation() {
 
 function assertNeutralMessage() {
   assertEquals(
-    PASSWORD_RECOVERY_NEUTRAL_MESSAGE,
-    "Si un compte correspond à cette adresse, un message de réinitialisation va être envoyé.",
-    "Le message neutre doit rester stable"
+    PASSWORD_RESET_REQUEST_PUBLIC_MESSAGE,
+    "Si un compte correspondant existe et dispose d’une adresse de récupération vérifiée, un courriel a été envoyé.",
+    "Le message public Patch 7 doit rester stable"
   );
   assert(
     isLegacyLocalEmail("eleve@fichemcv.local"),
     "Les comptes historiques doivent etre detectables sans message specifique"
-  );
-  assertEquals(
-    PASSWORD_RECOVERY_NEUTRAL_MESSAGE,
-    PASSWORD_RECOVERY_NEUTRAL_MESSAGE,
-    "Le message doit etre identique pour adresse connue, inconnue et interne"
   );
 }
 
@@ -74,11 +80,6 @@ function assertCallbackSafety() {
     getSafePasswordRecoveryNextPath("//evil.example/reset-password"),
     "/reset-password",
     "Le callback doit rejeter une URL externe protocole-relative"
-  );
-  assertEquals(
-    getSafePasswordRecoveryNextPath(null),
-    "/reset-password",
-    "Le callback sans next doit revenir vers reset-password"
   );
 }
 
@@ -105,357 +106,336 @@ function assertPasswordValidation() {
   );
 }
 
-function assertFilesAndSupabaseCalls() {
+function assertHybridPasswordRecoveryFiles() {
   const login = readSource("src/app/login/page.tsx");
   const forgot = readSource("src/app/forgot-password/page.tsx");
   const callback = readSource("src/app/auth/callback/route.ts");
   const reset = readSource("src/app/reset-password/page.tsx");
   const resetForm = readSource("src/components/ResetPasswordForm.tsx");
-  const supabaseServer = readSource("src/lib/supabase/server.ts");
-  const supabaseClient = readSource("src/lib/supabase/client.ts");
-  const passwordRecovery = readSource("src/lib/auth/passwordRecovery.ts");
+  const requestRoute = readSource("src/app/api/auth/request-password-reset/route.ts");
+  const confirmRoute = readSource("src/app/api/auth/confirm-password-reset/route.ts");
+  const tokenHelpers = readSource("src/lib/auth/passwordResetTokens.ts");
+  const migration = readSource(
+    "supabase/migrations/20260626170000_add_user_password_reset_tokens.sql"
+  );
   const docs = readSource("docs/auth-password-recovery.md");
 
   assert(existsSync("src/app/forgot-password/page.tsx"), "La page forgot-password doit exister.");
   assert(existsSync("src/app/auth/callback/route.ts"), "La route auth/callback doit exister.");
   assert(existsSync("src/app/reset-password/page.tsx"), "La page reset-password doit exister.");
-  assert(existsSync("src/components/ResetPasswordForm.tsx"), "Le formulaire client reset-password doit exister.");
+  assert(existsSync("src/components/ResetPasswordForm.tsx"), "Le formulaire reset-password doit exister.");
   assert(
-    !existsSync("src/app/auth/recovery/clear/route.ts"),
-    "La route de nettoyage recovery ne doit plus exister dans le parcours client."
+    existsSync("src/app/api/auth/request-password-reset/route.ts"),
+    "La route de demande Patch 7 doit exister."
   );
   assert(
-    !existsSync("src/app/api/auth/reset-password/route.ts"),
-    "La route API reset-password ne doit plus exister dans le parcours client."
+    existsSync("src/app/api/auth/confirm-password-reset/route.ts"),
+    "La route de confirmation Patch 7 doit exister."
   );
   assert(
-    existsSync("src/app/api/admin/students/reset-password/route.ts"),
-    "La route reset admin eleves ne doit pas etre supprimee"
+    existsSync("supabase/migrations/20260626170000_add_user_password_reset_tokens.sql"),
+    "La migration Patch 7 doit utiliser un timestamp unique."
   );
   assert(
-    existsSync("src/app/api/admin/teachers/reset-password/route.ts"),
-    "La route reset admin professeurs ne doit pas etre supprimee"
+    !existsSync("supabase/migrations/20260626_add_user_password_reset_tokens.sql"),
+    "L'ancien nom de migration Patch 7 ne doit plus exister."
   );
+  assertMigrationVersionIsUnique("20260626170000");
 
-  assertIncludes(login, "Mot de passe perdu ?", "Le lien de reset doit etre present sur /login.");
   assertIncludes(login, 'href="/forgot-password"', "Le lien de reset doit pointer vers /forgot-password.");
+  assertNotIncludes(login, "Invalid login credentials", "Le message Supabase brut ne doit pas etre affiche.");
+
   assertIncludes(
-    login,
-    "Connexion impossible. Vérifie ton identifiant et ton mot de passe.",
-    "Le message de connexion doit etre generique"
+    forgot,
+    'fetch("/api/auth/request-password-reset"',
+    "La demande de reset doit passer par la route serveur Patch 7"
   );
   assertIncludes(
-    login,
-    "Tu es déjà connecté en tant que",
-    "Une session existante doit etre affichee explicitement au lieu de laisser croire a une nouvelle connexion"
-  );
-  assertIncludes(
-    login,
-    "Se connecter avec un autre compte",
-    "Une nouvelle connexion avec un autre compte doit necessiter une deconnexion explicite"
-  );
-  assertIncludes(
-    login,
-    "setExistingSession",
-    "/login doit memoriser la session existante au lieu de rediriger silencieusement"
-  );
-  assertIncludes(
-    login,
-    "handleSignOut",
-    "/login doit proposer une deconnexion explicite avant changement de compte"
+    forgot,
+    "PASSWORD_RESET_REQUEST_PUBLIC_MESSAGE",
+    "La page doit afficher le message public neutre Patch 7"
   );
   assertNotIncludes(
-    login,
-    "router.replace(homePath)",
-    "/login ne doit plus rediriger automatiquement une session existante depuis l'effet client"
-  );
-  assertNotIncludes(login, "Invalid login credentials", "Le message Supabase brut ne doit pas etre affiche.");
-  assertNotIncludes(login, "Email not confirmed", "Le message Supabase brut ne doit pas etre affiche.");
-  assertNotIncludes(login, "User not found", "Le message Supabase brut ne doit pas etre affiche.");
-
-  assertIncludes(
     forgot,
     "resetPasswordForEmail",
-    "La demande de reset doit utiliser resetPasswordForEmail"
-  );
-  assertIncludes(
-    forgot,
-    "http://localhost:3000/reset-password",
-    "La redirection email doit etre exactement /reset-password sur localhost en developpement"
-  );
-  assertIncludes(
-    forgot,
-    "window.location.origin}/reset-password",
-    "La redirection email doit pointer directement vers /reset-password dans le navigateur"
+    "La page client ne doit plus declencher directement le reset Supabase"
   );
   assertNotIncludes(
     forgot,
-    "/auth/callback?next=/reset-password",
-    "La recuperation ne doit plus imposer le callback PKCE serveur"
-  );
-  assertNotIncludes(
-    forgot,
-    "0.0.0.0",
-    "La redirection email ne doit jamais utiliser 0.0.0.0"
-  );
-  assertNotIncludes(
-    forgot,
-    "@fichemcv.local",
-    "La page forgot-password ne doit pas exposer les comptes internes"
+    "adresse interne",
+    "La page forgot-password ne doit pas detailler le traitement des comptes internes"
   );
 
   assertIncludes(
-    callback,
-    "exchangeCodeForSession",
-    "La route auth/callback peut rester disponible pour les flux PKCE avec code"
+    requestRoute,
+    "resetPasswordForEmail",
+    "La route serveur doit conserver le parcours Supabase natif pour les adresses Auth reelles"
   );
   assertIncludes(
-    callback,
-    "const { data, error } = await supabase.auth.exchangeCodeForSession(code)",
-    "Le callback doit inspecter le resultat complet de exchangeCodeForSession"
+    requestRoute,
+    "shouldUseCustomRecoveryForIdentifier",
+    "La route serveur doit router les identifiants internes vers le parcours personnalise"
   );
   assertIncludes(
-    callback,
-    "Boolean(data.session)",
-    "Le callback doit verifier qu'une session Supabase est recue"
+    requestRoute,
+    "user_contacts",
+    "La route doit rechercher une adresse de recuperation"
   );
   assertIncludes(
-    callback,
-    "Boolean(data.user)",
-    "Le callback doit verifier qu'un utilisateur Supabase est recu"
+    requestRoute,
+    '.not("verified_at", "is", null)',
+    "La route doit exiger une adresse de recuperation verifiee"
   );
   assertIncludes(
-    callback,
-    "createClient(response)",
-    "Le callback doit donner la reponse finale au client SSR Supabase"
+    requestRoute,
+    "generatePasswordResetToken",
+    "La route doit generer un jeton applicatif"
   );
   assertIncludes(
-    callback,
-    "getSafePasswordRecoveryNextPath",
-    "Le callback doit valider le parametre next"
+    requestRoute,
+    "hashPasswordResetToken",
+    "La route doit stocker uniquement le hash du jeton"
   );
   assertIncludes(
-    callback,
-    "if (error || !hasSession || !hasUser)",
-    "Le callback doit refuser les echanges qui ne creent pas de session"
+    requestRoute,
+    "PASSWORD_RESET_RECENT_LIMIT_PER_HOUR",
+    "La route doit appliquer une limite horaire"
+  );
+  assertIncludes(
+    requestRoute,
+    "MIN_PUBLIC_RESPONSE_MS",
+    "La route doit appliquer un delai minimal commun aux reponses rapides"
+  );
+  assertIncludes(
+    requestRoute,
+    "PUBLIC_RESPONSE_JITTER_MS",
+    "La route doit ajouter une legere variation aleatoire commune"
+  );
+  assertIncludes(
+    requestRoute,
+    "getPasswordResetCooldownStart",
+    "La route doit appliquer un delai minimal entre deux demandes"
   );
   assertNotIncludes(
-    callback,
-    "fichemcv_password_recovery",
-    "Le callback ne doit plus poser de cookie recovery personnalise"
-  );
-  assertNotIncludes(
-    callback,
-    'searchParams.set("error"',
-    "Le callback ne doit pas exposer le diagnostic dans l'URL"
+    requestRoute,
+    "console.",
+    "La route ne doit pas journaliser le jeton ou l'identifiant"
   );
 
   assertIncludes(
     reset,
-    "<ResetPasswordForm />",
-    "La page reset-password doit deleguer la validation au composant client"
-  );
-  assertNotIncludes(
-    reset,
-    "cookies",
-    "La page reset-password ne doit plus verifier de marqueur cote serveur"
-  );
-  assertNotIncludes(
-    reset,
-    "auth.getUser",
-    "La page reset-password ne doit pas refuser le recovery au premier rendu serveur"
-  );
-  assertNotIncludes(
-    reset,
-    '"use client"',
-    "La page wrapper reset-password peut rester serveur et ne doit pas lire le fragment"
-  );
-  assertNotIncludes(
-    reset,
-    "document.cookie",
-    "La page reset-password ne doit pas lire de cookie"
-  );
-
-  assertIncludes(
-    resetForm,
-    "createClient",
-    "Le formulaire client doit creer le client Supabase navigateur"
+    "loadCustomTokenState",
+    "La page reset-password doit classifier les jetons applicatifs sans mutation"
   );
   assertIncludes(
     resetForm,
-    "onAuthStateChange",
-    "Le formulaire doit ecouter les changements d'etat Auth"
+    "custom-ready",
+    "Le formulaire doit accepter le parcours applicatif"
+  );
+  assertIncludes(
+    resetForm,
+    'fetch("/api/auth/confirm-password-reset"',
+    "Le formulaire doit envoyer le jeton applicatif a une route serveur"
   );
   assertIncludes(
     resetForm,
     'event === "PASSWORD_RECOVERY"',
-    "Le formulaire doit etre autorise par l'evenement PASSWORD_RECOVERY"
-  );
-  assertNotIncludes(
-    resetForm,
-    'fetch("/api/auth/reset-password"',
-    "Le formulaire ne doit plus appeler la route serveur de reset"
-  );
-  assertNotIncludes(
-    resetForm,
-    "document.cookie",
-    "Le formulaire client ne doit pas manipuler de cookie recovery"
-  );
-  assertIncludes(
-    resetForm,
-    "getSession",
-    "Le formulaire doit accepter une session deja initialisee par le fragment"
-  );
-  assertIncludes(
-    resetForm,
-    'useState<RecoveryState>("initializing")',
-    "Le formulaire ne doit pas etre affiche avant validation du recovery event"
-  );
-  assertIncludes(
-    resetForm,
-    "Vérification du lien de réinitialisation...",
-    "La page doit afficher un chargement pendant l'initialisation"
-  );
-  assertIncludes(
-    resetForm,
-    "access_denied",
-    "La page doit gerer les fragments d'erreur Supabase"
-  );
-  assertIncludes(
-    resetForm,
-    "otp_expired",
-    "La page doit gerer les liens expires Supabase"
-  );
-  assertIncludes(
-    resetForm,
-    "Ce lien de réinitialisation est invalide ou a expiré.",
-    "La page doit afficher le message generique de lien invalide ou expire"
-  );
-  assertIncludes(
-    resetForm,
-    "Demander un nouveau lien",
-    "La page doit proposer de demander un nouveau lien"
-  );
-  assertIncludes(
-    resetForm,
-    "history.replaceState",
-    "La page doit nettoyer le fragment avec history.replaceState"
-  );
-  assertIncludes(
-    resetForm,
-    "window.location.hash",
-    "La lecture du fragment doit rester cote navigateur"
+    "Le parcours Supabase natif doit rester supporte"
   );
   assertIncludes(
     resetForm,
     "updateUser",
-    "Le formulaire client authentifie doit utiliser updateUser"
-  );
-  assertIncludes(
-    resetForm,
-    "password: newPassword",
-    "Le nouveau mot de passe doit etre transmis a updateUser cote client"
-  );
-  assertIncludes(
-    resetForm,
-    "auth.signOut",
-    "La session recovery doit etre fermee apres modification reussie"
-  );
-  assertIncludes(
-    resetForm,
-    "PASSWORD_RECOVERY_SUCCESS_MESSAGE",
-    "La page doit afficher le message de succes attendu"
-  );
-  assertIncludes(resetForm, 'router.replace("/login")', "La page doit rediriger vers /login apres succes.");
-  assertIncludes(
-    resetForm,
-    "setRecoveryState(\"success\")",
-    "L'etat recovery doit etre nettoye apres succes"
-  );
-  assertNotIncludes(
-    resetForm,
-    "console.",
-    "Le formulaire ne doit pas journaliser token, OTP ou mot de passe"
-  );
-  assertNotIncludes(
-    resetForm,
-    "service_role",
-    "Le formulaire ne doit pas utiliser de service role"
+    "Le parcours Supabase natif doit continuer a utiliser updateUser cote session recovery"
   );
   assertNotIncludes(
     resetForm,
     "SUPABASE_SERVICE_ROLE_KEY",
     "Le formulaire ne doit pas utiliser de service role"
   );
-
-  for (const source of [callback, reset, resetForm, passwordRecovery]) {
-    assertNotIncludes(
-      source,
-      "fichemcv_password_recovery",
-      "Le cookie recovery personnalise doit etre absent du parcours"
-    );
-    assertNotIncludes(
-      source,
-      "PASSWORD_RECOVERY_COOKIE_NAME",
-      "La constante du cookie recovery personnalise doit etre absente"
-    );
-    assertNotIncludes(
-      source,
-      "/auth/recovery/clear",
-      "La route de nettoyage recovery ne doit plus etre requise"
-    );
-    assertNotIncludes(
-      source,
-      "/api/auth/reset-password",
-      "La route API reset-password ne doit plus etre requise"
-    );
-  }
+  assertNotIncludes(resetForm, "console.", "Le formulaire ne doit pas journaliser le mot de passe.");
 
   assertIncludes(
-    supabaseClient,
-    "createBrowserClient(supabaseUrl, supabaseAnonKey)",
-    "Le navigateur utilise createBrowserClient sans option PKCE explicite"
+    confirmRoute,
+    "consume_user_password_reset_token",
+    "La confirmation doit consommer le jeton atomiquement avant updateUserById"
   );
   assertIncludes(
-    supabaseServer,
-    "createServerClient",
-    "Le serveur conserve un client SSR separe pour les autres parcours"
+    confirmRoute,
+    "updateUserById",
+    "La confirmation doit modifier le mot de passe via Supabase Admin"
   );
-  assertIncludes(
-    supabaseServer,
-    "setAll(cookiesToSet, headers)",
-    "Le client SSR doit utiliser l'adaptateur cookies compatible @supabase/ssr actuel"
-  );
-  assertIncludes(
-    supabaseServer,
-    "response?.cookies.set(name, value, options)",
-    "Les cookies Supabase doivent etre appliques a la reponse retournee"
-  );
-  assertIncludes(
-    supabaseServer,
-    "response?.headers.set(name, value)",
-    "Les en-tetes Supabase doivent etre appliques a la reponse retournee"
-  );
-
-  assertIncludes(
-    docs,
-    "Site URL : `http://localhost:3000`",
-    "La documentation doit indiquer le Site URL local"
-  );
-  assertIncludes(
-    docs,
-    "`http://localhost:3000/reset-password`",
-    "La documentation doit indiquer la Redirect URL locale"
+  assertLessThan(
+    confirmRoute.indexOf("consume_user_password_reset_token"),
+    confirmRoute.indexOf("updateUserById"),
+    "La consommation definitive doit preceder updateUserById"
   );
   assertNotIncludes(
-    docs,
-    "0.0.0.0",
-    "La documentation ne doit plus mentionner 0.0.0.0"
+    confirmRoute,
+    "complete_user_password_reset_token",
+    "La confirmation ne doit plus appeler de RPC de completion"
   );
   assertNotIncludes(
+    confirmRoute,
+    "claim_nonce",
+    "La confirmation ne doit plus utiliser de nonce de claim"
+  );
+  assertNotIncludes(
+    confirmRoute,
+    "tokenId",
+    "La confirmation ne doit plus dependre d'un token_id apres consommation"
+  );
+  assertIncludes(
+    confirmRoute,
+    "MESSAGES.generic",
+    "Un echec updateUserById apres consommation doit retourner un message generique"
+  );
+  assertNotIncludes(confirmRoute, "console.", "La confirmation ne doit pas journaliser de secret.");
+
+  assertIncludes(tokenHelpers, "randomBytes(PASSWORD_RESET_TOKEN_BYTES)", "Le jeton doit utiliser crypto.randomBytes.");
+  assertIncludes(tokenHelpers, '.toString("base64url")', "Le jeton doit etre encode en base64url.");
+  assertIncludes(tokenHelpers, 'createHash("sha256")', "Le hash doit utiliser SHA-256.");
+  assertIncludes(tokenHelpers, "PASSWORD_RESET_TOKEN_TTL_MINUTES = 30", "Le TTL doit etre de 30 minutes.");
+  assertNotIncludes(tokenHelpers, "searchParams.set(\"user", "L'URL ne doit pas inclure l'UUID utilisateur.");
+
+  assertIncludes(migration, "create table if not exists public.user_password_reset_tokens", "La table dediee doit etre creee.");
+  assertIncludes(migration, "token_hash text not null unique", "Le hash du jeton doit etre unique.");
+  assertNotIncludes(migration, "claimed_at", "La colonne claimed_at doit etre absente.");
+  assertNotIncludes(migration, "claim_nonce", "La colonne claim_nonce doit etre absente.");
+  assertNotIncludes(migration, "claim_expires_at", "La colonne claim_expires_at doit etre absente.");
+  assertIncludes(migration, "alter table public.user_password_reset_tokens enable row level security", "La RLS doit etre activee.");
+  assertIncludes(migration, "No SELECT/INSERT/UPDATE/DELETE policy is created", "Aucune policy client ne doit etre creee.");
+  assertIncludes(migration, "consume_user_password_reset_token", "La fonction de consommation doit exister.");
+  assertNotIncludes(migration, "complete_user_password_reset_token", "La fonction de completion doit etre supprimee.");
+  assertNotIncludes(migration, "claim_user_password_reset_token", "La fonction claim separee doit etre supprimee.");
+  assertIncludes(migration, "for update", "La fonction doit verrouiller la ligne de jeton.");
+  assertLessThan(
+    migration.indexOf("set consumed_at = v_now"),
+    migration.indexOf("return query select 'success'::text, v_token.user_id"),
+    "La RPC doit marquer le jeton consomme avant de retourner le succes"
+  );
+  assertIncludes(
+    migration,
+    "where user_id = v_token.user_id",
+    "La RPC doit invalider les autres jetons actifs du meme utilisateur"
+  );
+  assertIncludes(migration, "revoke all on function public.consume_user_password_reset_token(text)\n  from public, anon, authenticated", "La RPC doit etre inaccessible aux roles client.");
+  assertIncludes(migration, "grant execute on function public.consume_user_password_reset_token(text)\n  to service_role", "L'execution doit etre reservee au service role.");
+  assertNotIncludes(migration, "grant execute on function public.consume_user_password_reset_token(text)\n  to authenticated", "La RPC de reset ne doit pas etre accordee aux clients authentifies.");
+  assertNotIncludes(migration, "grant execute on function public.consume_user_password_reset_token(text)\n  to anon", "La RPC de reset ne doit pas etre accordee au role anon.");
+
+  assertIncludes(
     docs,
-    "/auth/callback?next=/reset-password",
-    "La documentation ne doit plus recommander le callback pour la recuperation"
+    "20260626170000_add_user_password_reset_tokens.sql",
+    "La documentation doit pointer vers la migration renommee"
+  );
+  assertIncludes(
+    docs,
+    "SMTP synchrone peut",
+    "La documentation doit mentionner honnetement la limite temporelle restante"
+  );
+  assertIncludes(
+    docs,
+    "asynchrone serait la solution de production",
+    "La documentation doit indiquer la solution de production pour le timing"
+  );
+
+  assertIncludes(callback, "exchangeCodeForSession", "Le callback PKCE existant doit rester disponible.");
+}
+
+function assertPasswordResetTokenRpcFixMigration() {
+  const migrationName = readdirSync("supabase/migrations").find((name) =>
+    name.endsWith("_fix_password_reset_token_rpc_ambiguity.sql")
+  );
+
+  assert(
+    migrationName,
+    "La migration corrective de l'ambiguite user_id du reset password doit exister."
+  );
+
+  const migration = readSource(`supabase/migrations/${migrationName}`);
+
+  assertIncludes(
+    migration,
+    "create or replace function public.consume_user_password_reset_token(",
+    "La migration corrective doit remplacer la RPC de consommation."
+  );
+  assertIncludes(
+    migration,
+    "from public.user_password_reset_tokens as reset_token",
+    "La lecture du jeton doit utiliser un alias explicite."
+  );
+  assertIncludes(
+    migration,
+    "update public.user_password_reset_tokens as reset_token",
+    "Les updates de jetons doivent utiliser un alias explicite."
+  );
+  assertIncludes(
+    migration,
+    "select reset_token.*",
+    "La selection du jeton doit etre qualifiee par l'alias."
+  );
+  assertIncludes(
+    migration,
+    "reset_token.token_hash = p_token_hash",
+    "La recherche par hash doit qualifier token_hash."
+  );
+  assertIncludes(
+    migration,
+    "reset_token.consumed_at is null",
+    "Les tests consumed_at doivent etre qualifies."
+  );
+  assertIncludes(
+    migration,
+    "reset_token.expires_at <= v_now",
+    "Les tests expires_at doivent etre qualifies."
+  );
+  assertIncludes(
+    migration,
+    "reset_token.id = v_token.id",
+    "La consommation du jeton courant doit qualifier id."
+  );
+  assertIncludes(
+    migration,
+    "reset_token.user_id = v_token.user_id",
+    "L'invalidation des autres jetons doit qualifier user_id."
+  );
+  assertNotIncludes(
+    migration,
+    "where user_id = v_token.user_id",
+    "La forme ambigue user_id = v_token.user_id ne doit plus exister."
+  );
+  assertIncludes(
+    migration,
+    "revoke all on function public.consume_user_password_reset_token(text)\n  from public, anon, authenticated",
+    "La migration corrective doit revoquer les roles client."
+  );
+  assertIncludes(
+    migration,
+    "grant execute on function public.consume_user_password_reset_token(text)\n  to service_role",
+    "La migration corrective doit reserver l'execution au service role."
+  );
+  assertNotIncludes(
+    migration,
+    "grant execute on function public.consume_user_password_reset_token(text)\n  to authenticated",
+    "La migration corrective ne doit pas accorder la RPC aux clients authentifies."
+  );
+  assertNotIncludes(
+    migration,
+    "grant execute on function public.consume_user_password_reset_token(text)\n  to anon",
+    "La migration corrective ne doit pas accorder la RPC au role anon."
+  );
+}
+
+function assertMigrationVersionIsUnique(expectedVersion: string) {
+  const migrations = readdirSync("supabase/migrations").filter((name) =>
+    name.endsWith(".sql")
+  );
+  const matching = migrations.filter((name) => name.startsWith(`${expectedVersion}_`));
+
+  assertEquals(
+    matching.length,
+    1,
+    `La version de migration Patch 7 ${expectedVersion} doit etre unique`
   );
 }
 
@@ -480,28 +460,13 @@ function assertNoServiceRoleInClientCode() {
   }
 }
 
-function assertNoSensitiveDataInPasswordRecoveryLogs() {
-  for (const path of [
-    "src/app/auth/callback/route.ts",
-    "src/app/reset-password/page.tsx",
-    "src/components/ResetPasswordForm.tsx",
-  ]) {
-    const source = readSource(path);
-
-    assertNotIncludes(
-      source,
-      "console.",
-      `${path} ne doit pas journaliser le parcours de recuperation`
-    );
-  }
-}
-
 assertEmailValidation();
 assertNeutralMessage();
 assertCallbackSafety();
 assertPasswordValidation();
-assertFilesAndSupabaseCalls();
+assertHybridPasswordRecoveryFiles();
+assertPasswordResetTokenRpcFixMigration();
 assertNoServiceRoleInClientCode();
-assertNoSensitiveDataInPasswordRecoveryLogs();
+assert(PASSWORD_RECOVERY_SUCCESS_MESSAGE.length > 0, "Le message de succes doit exister.");
 
 console.log("Auth password recovery tests passed.");

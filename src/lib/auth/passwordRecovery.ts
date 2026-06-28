@@ -1,6 +1,9 @@
 export const PASSWORD_RECOVERY_NEUTRAL_MESSAGE =
   "Si un compte correspond à cette adresse, un message de réinitialisation va être envoyé.";
 
+export const PASSWORD_RESET_REQUEST_PUBLIC_MESSAGE =
+  "Si un compte correspondant existe et dispose d’une adresse de récupération vérifiée, un courriel a été envoyé.";
+
 export const PASSWORD_RECOVERY_SUCCESS_MESSAGE =
   "Ton mot de passe a été modifié. Tu peux maintenant te reconnecter.";
 

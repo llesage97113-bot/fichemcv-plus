@@ -36,6 +36,7 @@ export type RecoveryEmailContact = {
   contact_value: string | null;
   normalized_value: string | null;
   is_primary: boolean | null;
+  can_be_used_for_recovery?: boolean | null;
   verified_at: string | null;
 };
 
@@ -131,8 +132,10 @@ export function canAddRecoveryContact(appUser: RecoveryEmailAppUser) {
 export async function saveRecoveryEmailForUser(
   client: RecoveryEmailClient,
   authUserId: string,
-  normalizedEmail: string
+  normalizedEmail: string,
+  options: { canBeUsedForRecovery?: boolean } = {}
 ): Promise<{ ok: true; message: string } | { ok: false; code: RecoveryEmailErrorCode; message: string }> {
+  const canBeUsedForRecovery = options.canBeUsedForRecovery ?? true;
   const { data: appUserData, error: appUserError } = await client
     .from("app_users")
     .select("id, is_active, account_status")
@@ -155,7 +158,7 @@ export async function saveRecoveryEmailForUser(
 
   const { data: duplicateData, error: duplicateError } = await client
     .from("user_contacts")
-    .select("id, user_id, contact_type, contact_value, normalized_value, is_primary, verified_at")
+    .select("id, user_id, contact_type, contact_value, normalized_value, is_primary, can_be_used_for_recovery, verified_at")
     .eq("contact_type", "email")
     .eq("normalized_value", normalizedEmail)
     .maybeSingle();
@@ -184,7 +187,7 @@ export async function saveRecoveryEmailForUser(
 
   const { data: contactsData, error: contactsError } = await client
     .from("user_contacts")
-    .select("id, user_id, contact_type, contact_value, normalized_value, is_primary, verified_at")
+    .select("id, user_id, contact_type, contact_value, normalized_value, is_primary, can_be_used_for_recovery, verified_at")
     .eq("user_id", authUserId)
     .eq("contact_type", "email");
 
@@ -214,6 +217,7 @@ export async function saveRecoveryEmailForUser(
         normalized_value: normalizedEmail,
         verified_at: null,
         is_primary: !hasPrimaryEmail || Boolean(contactToReplace.is_primary),
+        can_be_used_for_recovery: canBeUsedForRecovery,
       })
       .eq("id", contactToReplace.id)
       .eq("user_id", authUserId);
@@ -232,6 +236,7 @@ export async function saveRecoveryEmailForUser(
     normalized_value: normalizedEmail,
     verified_at: null,
     is_primary: !hasPrimaryEmail,
+    can_be_used_for_recovery: canBeUsedForRecovery,
   });
 
   if (insertError) {

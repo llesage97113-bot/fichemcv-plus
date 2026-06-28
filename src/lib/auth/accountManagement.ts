@@ -28,12 +28,14 @@ export type AccountContact = {
   contact_value: string | null;
   normalized_value?: string | null;
   is_primary: boolean | null;
+  can_be_used_for_recovery?: boolean | null;
   verified_at: string | null;
 };
 
 export type AccountOverview = {
   appUser: AccountAppUser;
   authEmail: string | null;
+  studentLoginIdentifier: string | null;
   role: AccountRole;
   roleLabel: string;
   accountStatusLabel: string;
@@ -122,6 +124,28 @@ export function getReadableContactPriority(contact: AccountContact) {
   return contact.is_primary ? "Contact principal" : "Contact secondaire";
 }
 
+export function getReadableRecoveryConsent(contact: AccountContact) {
+  return contact.can_be_used_for_recovery
+    ? "Récupération autorisée"
+    : "Récupération non autorisée";
+}
+
+export function hasVerifiedRecoveryEmail(contacts: AccountContact[]) {
+  return contacts.some(
+    (contact) =>
+      contact.contact_type === "email" &&
+      Boolean(contact.verified_at) &&
+      Boolean(contact.can_be_used_for_recovery)
+  );
+}
+
+export function hasRecoveryEmailContact(contacts: AccountContact[]) {
+  return contacts.some(
+    (contact) =>
+      contact.contact_type === "email" && Boolean(contact.can_be_used_for_recovery)
+  );
+}
+
 export function isLegacyAccountIdentifier(
   authEmail: string | null | undefined,
   legacyLoginEmail: string | null | undefined
@@ -182,12 +206,15 @@ export async function loadAccountOverview(
   const role = normalizeAccountRole(appUser.role);
   const profile = await loadBusinessProfile(client, authUser.id, role);
   const contacts = await loadAccountContacts(client, authUser.id);
+  const studentLoginIdentifier =
+    role === "eleve" ? await loadStudentLoginIdentifier(client, authUser.id) : null;
   const authEmail = authUser.email ?? null;
 
   return {
     overview: {
       appUser,
       authEmail,
+      studentLoginIdentifier,
       role,
       roleLabel: getReadableAccountRole(appUser.role),
       accountStatusLabel: getReadableAccountStatus(appUser.account_status),
@@ -200,6 +227,18 @@ export async function loadAccountOverview(
     } satisfies AccountOverview,
     errorMessage: "",
   };
+}
+
+async function loadStudentLoginIdentifier(client: SupabaseLike, authUserId: string) {
+  const { data } = await asQuery(
+    client.from("student_login_identifiers").select("identifier")
+  )
+    .eq("user_id", authUserId)
+    .maybeSingle();
+
+  const row = (data ?? null) as { identifier?: string | null } | null;
+
+  return row?.identifier ?? null;
 }
 
 async function loadBusinessProfile(
@@ -246,7 +285,7 @@ async function loadAccountContacts(client: SupabaseLike, authUserId: string) {
   const { data, error } = await asQuery(
     client
       .from("user_contacts")
-      .select("id, contact_type, contact_value, normalized_value, is_primary, verified_at")
+      .select("id, contact_type, contact_value, normalized_value, is_primary, can_be_used_for_recovery, verified_at")
   )
     .eq("user_id", authUserId)
     .order("contact_type", { ascending: true })

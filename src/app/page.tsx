@@ -60,6 +60,50 @@ export default async function Home() {
           .order("created_at", { ascending: false })
       : { data: null };
 
+  const { data: studentAccounts } =
+    studentIds.length > 0
+      ? await admin
+          .from("students")
+          .select("id, user_id")
+          .in("id", studentIds)
+      : { data: null };
+
+  const studentUserIds = Array.from(
+    new Set(
+      (studentAccounts ?? [])
+        .map((student) => String(student.user_id ?? ""))
+        .filter(Boolean)
+    )
+  );
+
+  const { data: studentLoginRows } =
+    studentUserIds.length > 0
+      ? await admin
+          .from("student_login_identifiers")
+          .select("identifier, auth_email, user_id")
+          .in("user_id", studentUserIds)
+      : { data: null };
+
+  const loginRowsByUserId = new Map(
+    (studentLoginRows ?? []).map((row) => [
+      String(row.user_id),
+      {
+        identifier: row.identifier ?? null,
+        legacy_identifier: row.auth_email ?? null,
+      },
+    ])
+  );
+
+  const studentLoginIdentifiers = (studentAccounts ?? []).map((student) => {
+    const row = loginRowsByUserId.get(String(student.user_id ?? ""));
+
+    return {
+      student_id: String(student.id),
+      identifier: row?.identifier ?? null,
+      legacy_identifier: row?.legacy_identifier ?? null,
+    };
+  });
+
   function extractSourceFicheIds(sourceFichesJson: unknown) {
     let sources: unknown = sourceFichesJson;
 
@@ -147,7 +191,10 @@ export default async function Home() {
         <PendingStudentRegistrations />
 
         {!error && data && data.length > 0 && (
-          <TeacherDashboard fiches={enrichedFiches} />
+          <TeacherDashboard
+            fiches={enrichedFiches}
+            studentLoginIdentifiers={studentLoginIdentifiers}
+          />
         )}
       </section>
     </main>

@@ -142,7 +142,7 @@ function assertRoutesAndComponents() {
   assertNotIncludes(page, "set verified_at", "Le GET ne doit pas modifier verified_at");
 
   assertIncludes(accountPage, "RecoveryEmailVerificationButton", "/compte doit intégrer le bouton");
-  assertIncludes(accountPage, "Adresse disponible pour les futurs mécanismes de récupération.", "Le texte Vérifié doit rester prudent");
+  assertIncludes(accountPage, "Adresse disponible pour récupérer ton compte.", "Le texte Vérifié doit annoncer la récupération active");
   assertIncludes(sendButton, "contactId", "Le bouton doit transmettre contactId");
   assertNotIncludes(sendButton, "contact_value", "Le bouton ne doit pas recevoir l'adresse complète");
   assertNotIncludes(sendButton, "createAdminClient", "Le bouton client ne doit pas utiliser le service role");

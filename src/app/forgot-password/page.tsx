@@ -1,26 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useMemo, useState } from "react";
-import { normalizeEmail } from "@/lib/normalizers";
-import { createClient } from "@/lib/supabase/client";
+import { FormEvent, useState } from "react";
 import {
   isValidEmail,
-  PASSWORD_RECOVERY_NEUTRAL_MESSAGE,
+  PASSWORD_RESET_REQUEST_PUBLIC_MESSAGE,
 } from "@/lib/auth/passwordRecovery";
-
-function getPasswordRecoveryRedirectTo() {
-  if (process.env.NODE_ENV === "development") {
-    return "http://localhost:3000/reset-password";
-  }
-
-  return `${window.location.origin}/reset-password`;
-}
+import { normalizeLoginIdentifier } from "@/lib/auth/loginIdentifier";
 
 export default function ForgotPasswordPage() {
-  const supabase = useMemo(() => createClient(), []);
-
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -30,23 +19,28 @@ export default function ForgotPasswordPage() {
     setMessage("");
     setErrorMessage("");
 
-    const normalizedEmail = normalizeEmail(email);
+    const normalizedIdentifier = normalizeLoginIdentifier(identifier);
 
-    if (!isValidEmail(normalizedEmail)) {
-      setErrorMessage("Adresse email invalide.");
+    if (!isValidEmail(normalizedIdentifier)) {
+      setErrorMessage("Identifiant invalide.");
       return;
     }
 
     setIsLoading(true);
 
-    await supabase.auth
-      .resetPasswordForEmail(normalizedEmail, {
-        redirectTo: getPasswordRecoveryRedirectTo(),
-      })
-      .catch(() => null);
+    const response = await fetch("/api/auth/request-password-reset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        identifier: normalizedIdentifier,
+      }),
+    }).catch(() => null);
+    const payload = (await response?.json().catch(() => null)) as {
+      message?: string;
+    } | null;
 
     setIsLoading(false);
-    setMessage(PASSWORD_RECOVERY_NEUTRAL_MESSAGE);
+    setMessage(payload?.message || PASSWORD_RESET_REQUEST_PUBLIC_MESSAGE);
   }
 
   return (
@@ -61,7 +55,7 @@ export default function ForgotPasswordPage() {
               Mot de passe perdu ?
             </h1>
             <p className="mt-2 text-sm leading-6 text-slate-400">
-              Saisis ton adresse email pour demander un lien de
+              Saisis ton identifiant de connexion pour demander un lien de
               réinitialisation sécurisé.
             </p>
           </div>
@@ -72,21 +66,21 @@ export default function ForgotPasswordPage() {
                 htmlFor="email"
                 className="mb-1 block text-sm font-medium text-slate-200"
               >
-                Adresse email
+                Identifiant de connexion
               </label>
               <input
                 id="email"
-                type="email"
-                autoComplete="email"
+                type="text"
+                autoComplete="username"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
                 inputMode="email"
                 required
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                value={identifier}
+                onChange={(event) => setIdentifier(event.target.value)}
                 className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-400"
-                placeholder="exemple@domaine.fr"
+                placeholder="lea4827 ou prenom.nom@fichemcv.local"
               />
             </div>
 

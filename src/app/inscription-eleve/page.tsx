@@ -1,32 +1,39 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 import Link from "next/link";
 
+type RegistrationSuccess = {
+  email: string;
+  loginIdentifier?: string;
+  className: string;
+  schoolYear: string;
+  hasRecoveryEmail?: boolean;
+  canRecoverWithEmail?: boolean;
+  recoveryContactMessage?: string;
+  message: string;
+};
+
 export default function StudentRegistrationPage() {
-  const [registrationCode, setRegistrationCode] = useState("");
+  const [registrationCode, setRegistrationCode] = useState(() => {
+    if (typeof window === "undefined") {
+      return "";
+    }
+
+    return new URLSearchParams(window.location.search)
+      .get("code")
+      ?.toUpperCase() ?? "";
+  });
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [personalEmail, setPersonalEmail] = useState("");
+  const [useEmailForRecovery, setUseEmailForRecovery] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [success, setSuccess] = useState<{
-    email: string;
-    className: string;
-    schoolYear: string;
-    message: string;
-  } | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const codeFromUrl = params.get("code");
-
-    if (codeFromUrl) {
-      setRegistrationCode(codeFromUrl.toUpperCase());
-    }
-  }, []);
+  const [success, setSuccess] = useState<RegistrationSuccess | null>(null);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -44,13 +51,25 @@ export default function StudentRegistrationPage() {
           registrationCode,
           firstName,
           lastName,
+          personalEmail,
+          useEmailForRecovery,
           password,
           confirmPassword,
         }),
       });
 
       const rawResponse = await response.text();
-      let payload: any = null;
+      let payload: {
+        error?: string;
+        email?: string;
+        loginIdentifier?: string;
+        className?: string;
+        schoolYear?: string;
+        hasRecoveryEmail?: boolean;
+        canRecoverWithEmail?: boolean;
+        recoveryContactMessage?: string;
+        message?: string;
+      } | null = null;
 
       try {
         payload = rawResponse ? JSON.parse(rawResponse) : null;
@@ -68,10 +87,13 @@ export default function StudentRegistrationPage() {
         throw new Error("Réponse serveur vide pendant l’inscription.");
       }
 
-      setSuccess(payload);
+      const successPayload = parseRegistrationSuccess(payload);
+      setSuccess(successPayload);
       setRegistrationCode("");
       setFirstName("");
       setLastName("");
+      setPersonalEmail("");
+      setUseEmailForRecovery(false);
       setPassword("");
       setConfirmPassword("");
     } catch (error) {
@@ -107,7 +129,13 @@ export default function StudentRegistrationPage() {
               </p>
               <p className="mt-2 text-sm text-emerald-100/90">
                 Identifiant :{" "}
-                <span className="font-mono font-semibold">{success.email}</span>
+                <span className="font-mono font-semibold">
+                  {success.loginIdentifier ?? success.email}
+                </span>
+              </p>
+              <p className="mt-1 text-xs text-emerald-100/80">
+                La forme complète reste utilisable :{" "}
+                <span className="font-mono">{success.email}</span>
               </p>
               <p className="mt-1 text-sm text-emerald-100/90">
                 Classe : {success.className} — {success.schoolYear}
@@ -115,12 +143,24 @@ export default function StudentRegistrationPage() {
               <p className="mt-3 text-sm text-emerald-100/80">
                 {success.message}
               </p>
+              <p className="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-50">
+                {success.recoveryContactMessage}
+              </p>
+              {!success.canRecoverWithEmail && (
+                <p className="mt-3 rounded-xl border border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm leading-6 text-amber-50">
+                  Sans adresse vérifiée autorisée pour la récupération, tu ne pourras
+                  pas réinitialiser ton mot de passe de manière autonome. Tu devras
+                  demander l’aide de ton professeur ou de l’administrateur.
+                </p>
+              )}
 
               <Link
                 href="/login"
                 className="mt-5 inline-flex rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400"
               >
-                Aller à la connexion
+                {success.hasRecoveryEmail
+                  ? "Me connecter pour vérifier mon adresse"
+                  : "Aller à la connexion"}
               </Link>
             </div>
           ) : (
@@ -181,6 +221,43 @@ export default function StudentRegistrationPage() {
                     className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition focus:border-sky-400"
                   />
                 </div>
+              </div>
+
+              <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+                <label className="mb-1 block text-sm font-medium text-slate-200">
+                  Adresse mail personnelle
+                </label>
+                <input
+                  type="email"
+                  autoComplete="email"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  value={personalEmail}
+                  onChange={(event) => setPersonalEmail(event.target.value)}
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-400"
+                  placeholder="adresse@example.fr"
+                />
+                <p className="mt-3 text-sm leading-6 text-slate-400">
+                  Cette adresse permettra de recevoir les messages importants liés
+                  à ton compte FicheMCV+ et de récupérer ton accès en cas d’oubli
+                  du mot de passe. Elle ne sera pas utilisée comme identifiant de
+                  connexion.
+                </p>
+                <p className="mt-2 text-sm leading-6 text-amber-100">
+                  Sans adresse vérifiée, tu ne pourras pas réinitialiser ton mot de
+                  passe de manière autonome. Tu devras demander l’aide de ton
+                  professeur ou de l’administrateur.
+                </p>
+                <label className="mt-3 flex items-start gap-3 rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-3 text-sm text-slate-200">
+                  <input
+                    type="checkbox"
+                    checked={useEmailForRecovery}
+                    onChange={(event) => setUseEmailForRecovery(event.target.checked)}
+                    className="mt-1 h-4 w-4 rounded border-slate-600 bg-slate-950"
+                  />
+                  <span>Utiliser cette adresse pour récupérer mon compte</span>
+                </label>
               </div>
 
               <div>
@@ -252,4 +329,35 @@ export default function StudentRegistrationPage() {
       </section>
     </main>
   );
+}
+
+function parseRegistrationSuccess(payload: {
+  email?: string;
+  loginIdentifier?: string;
+  className?: string;
+  schoolYear?: string;
+  hasRecoveryEmail?: boolean;
+  canRecoverWithEmail?: boolean;
+  recoveryContactMessage?: string;
+  message?: string;
+}): RegistrationSuccess {
+  if (
+    typeof payload.email !== "string" ||
+    typeof payload.className !== "string" ||
+    typeof payload.schoolYear !== "string" ||
+    typeof payload.message !== "string"
+  ) {
+    throw new Error("Réponse serveur incomplète pendant l’inscription.");
+  }
+
+  return {
+    email: payload.email,
+    loginIdentifier: payload.loginIdentifier,
+    className: payload.className,
+    schoolYear: payload.schoolYear,
+    hasRecoveryEmail: payload.hasRecoveryEmail,
+    canRecoverWithEmail: payload.canRecoverWithEmail,
+    recoveryContactMessage: payload.recoveryContactMessage,
+    message: payload.message,
+  };
 }

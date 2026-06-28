@@ -98,6 +98,12 @@ export default function RecoveryEmailForm() {
         </div>
       </div>
 
+      <p className="text-sm leading-6 text-slate-400">
+        Cette adresse permettra de recevoir les messages importants liés à ton
+        compte FicheMCV+ et de récupérer ton accès en cas d’oubli du mot de
+        passe. Elle ne sera pas utilisée comme identifiant de connexion.
+      </p>
+
       {errorMessage && (
         <p className="rounded-xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
           {errorMessage}

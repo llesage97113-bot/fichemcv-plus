@@ -1,7 +1,25 @@
 import Link from "next/link";
 import ResetPasswordForm from "@/components/ResetPasswordForm";
+import {
+  classifyPasswordResetToken,
+  hashPasswordResetToken,
+  isValidPasswordResetTokenFormat,
+  type PasswordResetTokenRow,
+  type PasswordResetTokenStatus,
+} from "@/lib/auth/passwordResetTokens";
+import { createAdminClient } from "@/lib/supabase/admin";
 
-export default function ResetPasswordPage() {
+type ResetPasswordPageProps = {
+  searchParams: Promise<{ token?: string | string[] }>;
+};
+
+export default async function ResetPasswordPage({
+  searchParams,
+}: ResetPasswordPageProps) {
+  const params = await searchParams;
+  const token = Array.isArray(params.token) ? params.token[0] : params.token;
+  const customTokenState = await loadCustomTokenState(token ?? "");
+
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-100 sm:px-6 lg:px-10">
       <section className="mx-auto flex min-h-[80vh] max-w-md items-center">
@@ -15,7 +33,10 @@ export default function ResetPasswordPage() {
             </h1>
           </div>
 
-          <ResetPasswordForm />
+          <ResetPasswordForm
+            customToken={customTokenState.status === "valid" ? token ?? "" : ""}
+            customTokenStatus={customTokenState.status}
+          />
 
           <Link
             href="/login"
@@ -27,4 +48,32 @@ export default function ResetPasswordPage() {
       </section>
     </main>
   );
+}
+
+async function loadCustomTokenState(
+  rawToken: string
+): Promise<{ status: PasswordResetTokenStatus | "none" }> {
+  if (!rawToken) {
+    return { status: "none" };
+  }
+
+  if (!isValidPasswordResetTokenFormat(rawToken)) {
+    return { status: "invalid" };
+  }
+
+  const tokenHash = hashPasswordResetToken(rawToken);
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from("user_password_reset_tokens")
+    .select("id, user_id, token_hash, expires_at, consumed_at, created_at")
+    .eq("token_hash", tokenHash)
+    .maybeSingle();
+
+  if (error || !data) {
+    return { status: "invalid" };
+  }
+
+  return {
+    status: classifyPasswordResetToken(data as PasswordResetTokenRow),
+  };
 }

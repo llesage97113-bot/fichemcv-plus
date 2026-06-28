@@ -9,16 +9,17 @@ import {
   getReadableContactPriority,
   getReadableContactType,
   getReadableContactVerification,
+  getReadableRecoveryConsent,
   loadAccountOverview,
 } from "@/lib/auth/accountManagement";
 import { getRoleHomePath } from "@/lib/auth/getRoleHomePath";
 import { requireUser } from "@/lib/auth/requireUser";
-import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 
 export default async function AccountPage() {
   const authUser = await requireUser();
-  const supabase = await createClient();
-  const { overview, errorMessage } = await loadAccountOverview(supabase, authUser);
+  const admin = createAdminClient();
+  const { overview, errorMessage } = await loadAccountOverview(admin, authUser);
   const homePath = getRoleHomePath(authUser.app_metadata?.role) ?? "/login";
 
   return (
@@ -78,7 +79,12 @@ export default async function AccountPage() {
                 <InfoItem label="Statut du compte" value={overview.accountStatusLabel} />
                 <InfoItem
                   label="Identifiant de connexion"
-                  value={overview.authEmail || overview.appUser.email || "Non renseigné"}
+                  value={
+                    overview.studentLoginIdentifier ||
+                    overview.authEmail ||
+                    overview.appUser.email ||
+                    "Non renseigné"
+                  }
                 />
                 <InfoItem
                   label="Adresse email de récupération"
@@ -90,15 +96,38 @@ export default async function AccountPage() {
             {overview.isLegacyAccount && (
               <section className="rounded-2xl border border-amber-400/40 bg-amber-500/10 p-5 shadow-sm">
                 <h2 className="text-xl font-semibold text-amber-100">
-                  Identifiant historique
+                  {overview.studentLoginIdentifier
+                    ? "Nouvel identifiant de connexion"
+                    : "Identifiant historique"}
                 </h2>
-                <p className="mt-2 text-sm leading-6 text-amber-100/85">
-                  Ton compte utilise encore un identifiant de connexion interne.
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-300">
-                  Une adresse email réelle pourra prochainement être ajoutée pour
-                  faciliter la récupération du compte.
-                </p>
+                {overview.studentLoginIdentifier ? (
+                  <>
+                    <p className="mt-2 text-sm leading-6 text-amber-100/85">
+                      Ton nouvel identifiant de connexion est :{" "}
+                      <span className="font-mono font-semibold">
+                        {overview.studentLoginIdentifier}
+                      </span>
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      Ton ancien identifiant reste temporairement utilisable.
+                    </p>
+                    <p className="mt-2 break-words font-mono text-sm text-slate-400">
+                      {overview.appUser.legacy_login_email ||
+                        overview.authEmail ||
+                        overview.appUser.email}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-2 text-sm leading-6 text-amber-100/85">
+                      Ton compte utilise encore un identifiant de connexion interne.
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      Une adresse email réelle pourra prochainement être ajoutée pour
+                      faciliter la récupération du compte.
+                    </p>
+                  </>
+                )}
               </section>
             )}
 
@@ -149,10 +178,17 @@ export default async function AccountPage() {
                         <span className="rounded-full border border-slate-700 px-2 py-1 text-slate-300">
                           {getReadableContactPriority(contact)}
                         </span>
+                        {contact.contact_type === "email" && (
+                          <span className="rounded-full border border-slate-700 px-2 py-1 text-slate-300">
+                            {getReadableRecoveryConsent(contact)}
+                          </span>
+                        )}
                       </div>
-                      {contact.contact_type === "email" && contact.verified_at && (
+                      {contact.contact_type === "email" &&
+                        contact.verified_at &&
+                        contact.can_be_used_for_recovery && (
                         <p className="mt-3 text-sm leading-6 text-slate-400">
-                          Adresse disponible pour les futurs mécanismes de récupération.
+                          Adresse disponible pour récupérer ton compte.
                         </p>
                       )}
                       {contact.contact_type === "email" && (

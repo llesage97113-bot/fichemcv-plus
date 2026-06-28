@@ -10,10 +10,19 @@ import {
 } from "@/lib/auth/passwordRecovery";
 import { createClient } from "@/lib/supabase/client";
 
-type RecoveryState = "initializing" | "ready" | "invalid" | "success";
+type CustomTokenStatus = "none" | "valid" | "invalid" | "expired" | "consumed";
+type RecoveryState =
+  | "initializing"
+  | "ready"
+  | "custom-ready"
+  | "invalid"
+  | "success";
 
 const INVALID_RECOVERY_LINK_MESSAGE =
   "Ce lien de réinitialisation est invalide ou a expiré.";
+const EXPIRED_CUSTOM_LINK_MESSAGE = "Ce lien de réinitialisation a expiré.";
+const CONSUMED_CUSTOM_LINK_MESSAGE =
+  "Ce lien de réinitialisation a déjà été utilisé.";
 
 function getFragmentParams() {
   if (typeof window === "undefined" || !window.location.hash) {
@@ -54,19 +63,41 @@ function cleanSensitiveFragment() {
   );
 }
 
-export default function ResetPasswordForm() {
+type ResetPasswordFormProps = {
+  customToken?: string;
+  customTokenStatus?: CustomTokenStatus;
+};
+
+export default function ResetPasswordForm({
+  customToken = "",
+  customTokenStatus = "none",
+}: ResetPasswordFormProps) {
   const router = useRouter();
   const supabase = useMemo(() => createClient(), []);
+  const hasValidCustomToken = customTokenStatus === "valid" && Boolean(customToken);
 
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [recoveryState, setRecoveryState] =
-    useState<RecoveryState>("initializing");
+  const [recoveryState, setRecoveryState] = useState<RecoveryState>(
+    customTokenStatus === "none"
+      ? "initializing"
+      : hasValidCustomToken
+        ? "custom-ready"
+        : "invalid"
+  );
   const [message, setMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState(
+    customTokenStatus === "none" || hasValidCustomToken
+      ? ""
+      : getCustomTokenStatusMessage(customTokenStatus)
+  );
 
   useEffect(() => {
+    if (customTokenStatus !== "none") {
+      return;
+    }
+
     let isMounted = true;
     let isResolved = false;
     const fragmentParams = getFragmentParams();
@@ -92,9 +123,15 @@ export default function ResetPasswordForm() {
       hasRecoveryErrorFragment(fragmentParams)
     ) {
       isResolved = true;
-      setRecoveryState("invalid");
-      setErrorMessage(INVALID_RECOVERY_LINK_MESSAGE);
-      cleanSensitiveFragment();
+      queueMicrotask(() => {
+        if (!isMounted) {
+          return;
+        }
+
+        setRecoveryState("invalid");
+        setErrorMessage(INVALID_RECOVERY_LINK_MESSAGE);
+        cleanSensitiveFragment();
+      });
       return () => {
         isMounted = false;
         subscription.unsubscribe();
@@ -133,14 +170,14 @@ export default function ResetPasswordForm() {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [supabase]);
+  }, [customToken, customTokenStatus, supabase]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setMessage("");
     setErrorMessage("");
 
-    if (recoveryState !== "ready") {
+    if (recoveryState !== "ready" && recoveryState !== "custom-ready") {
       setErrorMessage(INVALID_RECOVERY_LINK_MESSAGE);
       return;
     }
@@ -153,6 +190,43 @@ export default function ResetPasswordForm() {
     }
 
     setIsLoading(true);
+
+    if (recoveryState === "custom-ready") {
+      const response = await fetch("/api/auth/confirm-password-reset", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          token: customToken,
+          newPassword,
+          confirmPassword,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as {
+        message?: string;
+        error?: string;
+        redirectTo?: string;
+      } | null;
+
+      if (!response.ok) {
+        setIsLoading(false);
+        setErrorMessage(
+          payload?.error ||
+            "Modification impossible. Demande un nouveau lien de réinitialisation."
+        );
+        return;
+      }
+
+      setNewPassword("");
+      setConfirmPassword("");
+      setMessage(payload?.message || PASSWORD_RECOVERY_SUCCESS_MESSAGE);
+      setRecoveryState("success");
+
+      window.setTimeout(() => {
+        router.replace(payload?.redirectTo || "/login");
+        router.refresh();
+      }, 1800);
+      return;
+    }
 
     const { error } = await supabase.auth.updateUser({
       password: newPassword,
@@ -266,4 +340,16 @@ export default function ResetPasswordForm() {
       </button>
     </form>
   );
+}
+
+function getCustomTokenStatusMessage(status: CustomTokenStatus) {
+  if (status === "expired") {
+    return EXPIRED_CUSTOM_LINK_MESSAGE;
+  }
+
+  if (status === "consumed") {
+    return CONSUMED_CUSTOM_LINK_MESSAGE;
+  }
+
+  return INVALID_RECOVERY_LINK_MESSAGE;
 }
