@@ -327,6 +327,10 @@ export default async function FicheDetailPage({
   const status = String(fiche.status ?? "");
   const epreuve = String(fiche.epreuve ?? "");
   const mcv_option = normalizeMcvOption(fiche.mcv_option);
+  const studentFullName =
+    `${fiche.first_name ?? ""} ${fiche.last_name ?? ""}`.trim() ||
+    "Élève sans nom";
+  const className = String(fiche.class_name ?? "Classe non renseignée");
   const canExportWord =
     status === "archivee" &&
     (epreuve === "E31" || epreuve === "E32") &&
@@ -334,14 +338,79 @@ export default async function FicheDetailPage({
 
   return (
     <main className="min-h-screen bg-slate-950 px-4 py-6 text-slate-100 sm:px-6 lg:px-10">
-        <AppNavigation maxWidth="5xl" />
+      <AppNavigation maxWidth="5xl" />
       <section className="mx-auto max-w-5xl">
-        <Link
-          href="/"
-          className="mb-6 inline-flex items-center rounded-lg border border-slate-800 px-3 py-2 text-sm text-sky-300 hover:bg-slate-900 hover:text-sky-200"
-        >
-          ← Retour au tableau de bord
-        </Link>
+        <div className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-sm sm:p-5">
+          <div className="md:hidden">
+            <Link
+              href="/"
+              className="mb-4 inline-flex min-h-11 items-center rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-sky-300 hover:bg-slate-900 hover:text-sky-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
+            >
+              ← Retour au tableau de bord
+            </Link>
+
+            <h1 className="text-2xl font-bold leading-tight text-slate-100">
+              Gestion des fiches
+            </h1>
+            <p className="mt-2 text-sm font-medium text-slate-300">
+              {studentFullName} — {className}
+            </p>
+          </div>
+
+          <div className="hidden md:block">
+            <nav
+              aria-label="Fil d’Ariane"
+              className="mb-3 text-sm text-slate-400"
+            >
+              <ol className="flex flex-wrap items-center gap-2">
+                <li>
+                  <Link href="/" className="text-sky-300 hover:text-sky-200 hover:underline">
+                    Espace professeur
+                  </Link>
+                </li>
+                <li aria-hidden="true" className="text-slate-600">
+                  &gt;
+                </li>
+                <li>
+                  <Link
+                    href="/#teacher-students-classes"
+                    className="text-sky-300 hover:text-sky-200 hover:underline"
+                  >
+                    Élèves et classes
+                  </Link>
+                </li>
+                <li aria-hidden="true" className="text-slate-600">
+                  &gt;
+                </li>
+                <li className="text-slate-300">{studentFullName}</li>
+                <li aria-hidden="true" className="text-slate-600">
+                  &gt;
+                </li>
+                <li aria-current="page" className="text-slate-100">
+                  Gestion des fiches
+                </li>
+              </ol>
+            </nav>
+
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h1 className="text-3xl font-bold leading-tight text-slate-100">
+                  Gestion des fiches
+                </h1>
+                <p className="mt-2 text-sm font-medium text-slate-300">
+                  {studentFullName} — {className}
+                </p>
+              </div>
+
+              <Link
+                href="/"
+                className="inline-flex w-fit items-center rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-sky-300 hover:bg-slate-900 hover:text-sky-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
+              >
+                ← Retour au tableau de bord
+              </Link>
+            </div>
+          </div>
+        </div>
 
         <header className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/70 p-5 shadow-sm sm:p-6">
           <div className="mb-3 flex flex-wrap gap-2">

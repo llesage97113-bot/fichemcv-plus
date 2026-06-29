@@ -27,6 +27,7 @@ export default function ClassRegistrationManager() {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [copiedInvitationClassId, setCopiedInvitationClassId] = useState<string | null>(null);
   const [expandedStatsClassId, setExpandedStatsClassId] = useState<string | null>(null);
+  const [isCreateClassExpanded, setIsCreateClassExpanded] = useState(false);
 
   const [newName, setNewName] = useState("");
   const [newSchoolYear, setNewSchoolYear] = useState("2025-2026");
@@ -248,6 +249,7 @@ Après inscription, ton professeur devra valider ton compte.`;
       setNewLevel("");
       setNewMcvOption("");
       setNewCode("");
+      setIsCreateClassExpanded(false);
 
       await loadClasses({ resetMessage: false });
     } catch (error) {
@@ -259,7 +261,11 @@ Après inscription, ton professeur devra valider ton compte.`;
   }
 
   useEffect(() => {
-    loadClasses();
+    const timeoutId = window.setTimeout(() => {
+      loadClasses();
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
   }, []);
 
   return (
@@ -483,84 +489,108 @@ Après inscription, ton professeur devra valider ton compte.`;
         </div>
       )}
 
-      <form
-        onSubmit={createClass}
-        className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/60 p-4"
-      >
-        <h3 className="mb-3 text-sm font-semibold text-slate-100">
-          Créer une nouvelle classe
-        </h3>
-
-        <div className="grid gap-3 md:grid-cols-5">
-          <input
-            required
-            value={newName}
-            onChange={(event) => setNewName(event.target.value)}
-            placeholder="TMCV-A"
-            className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
-          />
-
-          <input
-            required
-            value={newSchoolYear}
-            onChange={(event) => setNewSchoolYear(event.target.value)}
-            placeholder="2025-2026"
-            className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
-          />
-
-          <input
-            value={newLevel}
-            onChange={(event) => setNewLevel(event.target.value)}
-            placeholder="Terminale Bac Pro MCV option A"
-            className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
-          />
-
-          <label className="block">
-            <span className="sr-only">Option MCV</span>
-            <select
-              required
-              value={newMcvOption}
-              onChange={(event) =>
-                setNewMcvOption(event.target.value as McvOptionFormValue)
-              }
-              className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
-            >
-              <option value="">Option MCV</option>
-              <option value="A">
-                Option A – Animation et gestion de l’espace commercial
-              </option>
-              <option value="B">
-                Option B – Prospection clientèle et valorisation de l’offre commerciale
-              </option>
-            </select>
-          </label>
-
-          <div className="flex gap-2">
-            <input
-              required
-              value={newCode}
-              onChange={(event) => setNewCode(event.target.value)}
-              placeholder="TMCVA26-8K3P"
-              className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
-            />
-
-            <button
-              type="button"
-              onClick={generateNewCode}
-              className="rounded-xl border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-200 transition hover:bg-sky-950/40"
-            >
-              Générer
-            </button>
-          </div>
-        </div>
-
+      <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/60 p-4">
         <button
-          type="submit"
-          className="mt-3 rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400"
+          type="button"
+          aria-expanded={isCreateClassExpanded}
+          aria-controls="create-class-form"
+          onClick={() => setIsCreateClassExpanded((isExpanded) => !isExpanded)}
+          className="inline-flex min-h-11 w-full items-center justify-between gap-3 rounded-xl border border-sky-500/40 px-4 py-2 text-left text-sm font-semibold text-sky-200 transition hover:bg-sky-950/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300 sm:w-auto"
         >
-          Créer la classe
+          <span>+ Créer une nouvelle classe</span>
+          <span aria-hidden="true" className="text-base leading-none">
+            {isCreateClassExpanded ? "▴" : "▾"}
+          </span>
         </button>
-      </form>
+
+        {isCreateClassExpanded && (
+          <form
+            id="create-class-form"
+            onSubmit={createClass}
+            className="mt-4"
+          >
+            <div className="grid gap-3 md:grid-cols-5">
+              <input
+                required
+                value={newName}
+                onChange={(event) => setNewName(event.target.value)}
+                placeholder="TMCV-A"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
+              />
+
+              <input
+                required
+                value={newSchoolYear}
+                onChange={(event) => setNewSchoolYear(event.target.value)}
+                placeholder="2025-2026"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
+              />
+
+              <input
+                value={newLevel}
+                onChange={(event) => setNewLevel(event.target.value)}
+                placeholder="Terminale Bac Pro MCV option A"
+                className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
+              />
+
+              <label className="block">
+                <span className="sr-only">Option MCV</span>
+                <select
+                  required
+                  value={newMcvOption}
+                  onChange={(event) =>
+                    setNewMcvOption(event.target.value as McvOptionFormValue)
+                  }
+                  className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none focus:border-sky-400"
+                >
+                  <option value="">Option MCV</option>
+                  <option value="A">
+                    Option A – Animation et gestion de l’espace commercial
+                  </option>
+                  <option value="B">
+                    Option B – Prospection clientèle et valorisation de l’offre commerciale
+                  </option>
+                </select>
+              </label>
+
+              <div className="flex gap-2">
+                <input
+                  required
+                  value={newCode}
+                  onChange={(event) => setNewCode(event.target.value)}
+                  placeholder="TMCVA26-8K3P"
+                  className="min-w-0 flex-1 rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-600 focus:border-sky-400"
+                />
+
+                <button
+                  type="button"
+                  onClick={generateNewCode}
+                  className="rounded-xl border border-sky-500/40 px-3 py-2 text-sm font-medium text-sky-200 transition hover:bg-sky-950/40"
+                >
+                  Générer
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <button
+                type="submit"
+                className="rounded-xl bg-sky-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-sky-400"
+              >
+                Créer la classe
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCreateClassExpanded(false)}
+                className="rounded-xl border border-slate-700 px-4 py-2 text-sm font-medium text-slate-300 transition hover:bg-slate-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+              >
+                Replier
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
 
       {visibleMessage && (
         <p

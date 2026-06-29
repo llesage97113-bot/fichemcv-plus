@@ -160,6 +160,7 @@ export default function TeacherDashboard({
   const [statusFilter, setStatusFilter] = useState<StatusGroup>("all");
   const [selectedStudentKey, setSelectedStudentKey] = useState<string | null>(null);
   const [selectedStudentLabel, setSelectedStudentLabel] = useState("");
+  const [isActivityOverviewExpanded, setIsActivityOverviewExpanded] = useState(false);
   const [loginIdentifiersByStudent, setLoginIdentifiersByStudent] = useState(() => {
     return new Map(
       studentLoginIdentifiers.map((item) => [
@@ -429,64 +430,92 @@ export default function TeacherDashboard({
 
   return (
     <>
-      <section className="mb-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-6 rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm">
         <button
           type="button"
-          onClick={() => scrollToSection("teacher-priority-section")}
-          className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+          aria-expanded={isActivityOverviewExpanded}
+          aria-controls="teacher-activity-overview"
+          onClick={() => setIsActivityOverviewExpanded((isExpanded) => !isExpanded)}
+          className="flex min-h-11 w-full items-center justify-between gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-slate-800/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
         >
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            À traiter maintenant
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{dashboardStats.toProcess}</p>
-          <p className="mt-1 text-xs text-slate-500">Soumises et corrigées.</p>
+          <span className="text-lg font-semibold text-slate-100">
+            Vue d’ensemble de l’activité
+          </span>
+          <span aria-hidden="true" className="text-base text-slate-300">
+            {isActivityOverviewExpanded ? "▴" : "▾"}
+          </span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setStatusFilter("waiting_student");
-            scrollToSection("teacher-students-classes");
-          }}
-          className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
-        >
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            En attente élève
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">
-            {dashboardStats.waitingStudent}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Corrections demandées.</p>
-        </button>
+        {isActivityOverviewExpanded && (
+          <div
+            id="teacher-activity-overview"
+            className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-4"
+          >
+            <button
+              type="button"
+              onClick={() => scrollToSection("teacher-priority-section")}
+              className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+            >
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                À traiter maintenant
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-100">
+                {dashboardStats.toProcess}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Soumises et corrigées.</p>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => {
-            setStatusFilter("finalized");
-            scrollToSection("teacher-fiche-list");
-          }}
-          className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
-        >
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            Finalisées
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{dashboardStats.finalized}</p>
-          <p className="mt-1 text-xs text-slate-500">Validées, verrouillées, archivées.</p>
-        </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter("waiting_student");
+                scrollToSection("teacher-students-classes");
+              }}
+              className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+            >
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                En attente élève
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-100">
+                {dashboardStats.waitingStudent}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Corrections demandées.</p>
+            </button>
 
-        <button
-          type="button"
-          onClick={() => scrollToSection("teacher-students-classes")}
-          className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
-        >
-          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-            Élèves sans activité
-          </p>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">
-            {dashboardStats.inactiveStudents}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">Aucune fiche démarrée.</p>
-        </button>
+            <button
+              type="button"
+              onClick={() => {
+                setStatusFilter("finalized");
+                scrollToSection("teacher-fiche-list");
+              }}
+              className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+            >
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Finalisées
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-100">
+                {dashboardStats.finalized}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">
+                Validées, verrouillées, archivées.
+              </p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => scrollToSection("teacher-students-classes")}
+              className="rounded-xl border border-slate-800 bg-slate-900/60 p-3 text-left transition hover:border-slate-600 hover:bg-slate-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-slate-300"
+            >
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
+                Élèves sans activité
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-slate-100">
+                {dashboardStats.inactiveStudents}
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Aucune fiche démarrée.</p>
+            </button>
+          </div>
+        )}
       </section>
 
       <section
