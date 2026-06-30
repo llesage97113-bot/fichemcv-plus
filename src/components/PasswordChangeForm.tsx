@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import PasswordInput from "@/components/PasswordInput";
 
 type PasswordChangeFormProps = {
   description?: string;
@@ -84,9 +85,8 @@ export default function PasswordChangeForm({
             >
               Nouveau mot de passe
             </label>
-            <input
+            <PasswordInput
               id="new-password"
-              type="password"
               autoComplete="new-password"
               required
               minLength={PASSWORD_MIN_LENGTH}
@@ -104,9 +104,8 @@ export default function PasswordChangeForm({
             >
               Confirmer le mot de passe
             </label>
-            <input
+            <PasswordInput
               id="confirm-password"
-              type="password"
               autoComplete="new-password"
               required
               minLength={PASSWORD_MIN_LENGTH}

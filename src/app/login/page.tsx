@@ -5,6 +5,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearSupabaseAuthStorage, createClient } from "@/lib/supabase/client";
 import { getRoleHomePath } from "@/lib/auth/getRoleHomePath";
+import PasswordInput from "@/components/PasswordInput";
 
 type ExistingSession = {
   email: string;
@@ -192,9 +193,8 @@ export default function LoginPage() {
                 >
                   Mot de passe
                 </label>
-                <input
+                <PasswordInput
                   id="password"
-                  type="password"
                   autoComplete="current-password"
                   required
                   value={password}

@@ -114,45 +114,119 @@ async function getTeacherClassIds(
   return getCurrentTeacherClassIds(admin, authUser);
 }
 
-function FinalExportActions({
+function TeacherTreatmentPanel({
   ficheId,
+  status,
+  statusLabel,
+  sections,
+  isTeacherFeedbackReadOnly,
   canExportWord,
+  showEvaluationAction,
+  initialReport,
+  initialReportCreatedAt,
 }: {
   ficheId: string;
+  status: string | null;
+  statusLabel: string;
+  sections: {
+    id: string;
+    section_title: string;
+    teacher_feedback?: string | null;
+  }[];
+  isTeacherFeedbackReadOnly: boolean;
   canExportWord: boolean;
+  showEvaluationAction: boolean;
+  initialReport: Parameters<
+    typeof GenerateEvaluationButton
+  >[0]["initialReport"];
+  initialReportCreatedAt?: string | null;
 }) {
+  const hasSections = sections.length > 0;
+
   return (
-    <section className="mt-4 rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-        Exports
-      </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4">
-          <p className="text-sm font-semibold text-slate-100">Export Word</p>
-          {canExportWord ? (
+    <aside className="space-y-4 lg:sticky lg:top-6">
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-sm sm:p-5">
+        <p className="text-xs font-semibold uppercase tracking-wide text-sky-300">
+          Traitement professeur
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <span className="text-sm font-medium text-slate-300">
+            Statut actuel
+          </span>
+          <span
+            className={`rounded-full border px-3 py-1 text-xs font-semibold ${getStatusClasses(
+              status
+            )}`}
+          >
+            {statusLabel}
+          </span>
+        </div>
+      </section>
+
+      <div className="space-y-4">
+        <TeacherWorkflowActions ficheId={ficheId} status={status} />
+
+        {showEvaluationAction && (
+          <GenerateEvaluationButton
+            ficheId={ficheId}
+            initialReport={initialReport}
+            initialReportCreatedAt={initialReportCreatedAt ?? null}
+          />
+        )}
+
+        {canExportWord && (
+          <section className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Export
+            </p>
+            <p className="mt-2 text-sm font-semibold text-slate-100">
+              Export Word
+            </p>
             <a
               href={`/api/fiches/${ficheId}/export/word`}
-              className="mt-3 inline-flex cursor-pointer items-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-400"
+              className="mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-sky-400 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-300"
             >
               Export Word
             </a>
-          ) : (
-            <p className="mt-1 text-sm leading-6 text-slate-400">
-              Disponible pour les fiches archivées E31 et E32, options A et B.
+          </section>
+        )}
+
+        <section className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
+          <div className="mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Commentaires et consignes
+            </p>
+            <p className="mt-1 text-sm leading-6 text-slate-300">
+              Remarques professeur par section, visibles par l’élève.
+            </p>
+          </div>
+
+          {!hasSections && (
+            <p className="text-sm leading-6 text-slate-400">
+              Aucune section disponible pour ajouter une remarque.
             </p>
           )}
-        </div>
 
-        <div className="rounded-xl border border-dashed border-slate-700 bg-slate-900/50 p-4">
-          <p className="text-sm font-semibold text-slate-100">
-            Export PDF — bientôt disponible
-          </p>
-          <p className="mt-1 text-sm leading-6 text-slate-400">
-            Aucun export PDF actif n’est proposé pour le moment.
-          </p>
-        </div>
+          {hasSections && (
+            <div className="space-y-4">
+              {sections.map((section) => (
+                <div key={section.id}>
+                  <p className="mb-2 text-sm font-semibold leading-snug text-slate-100">
+                    {section.section_title}
+                  </p>
+                  <TeacherSectionFeedbackEditor
+                    sectionId={section.id}
+                    initialFeedback={section.teacher_feedback ?? null}
+                    readOnly={isTeacherFeedbackReadOnly}
+                    embedded
+                  />
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
-    </section>
+    </aside>
   );
 }
 
@@ -508,25 +582,6 @@ export default async function FicheDetailPage({
             </div>
           </div>
 
-          <TeacherWorkflowActions
-            ficheId={id}
-            status={fiche.status}
-          />
-
-          {!isFinalPreview && (
-            <GenerateEvaluationButton
-              ficheId={id}
-              initialReport={latestReport?.report_json ?? null}
-              initialReportCreatedAt={latestReport?.created_at ?? null}
-            />
-          )}
-
-          {isFinalPreview && (
-            <FinalExportActions
-              ficheId={ficheId}
-              canExportWord={canExportWord}
-            />
-          )}
         </header>
 
         {sectionsError && (
@@ -536,50 +591,61 @@ export default async function FicheDetailPage({
           </div>
         )}
 
-        <ActivityInfoReadOnly
-          info={{
-            company_name: fiche.company_name,
-            pfmp_period: fiche.pfmp_period,
-            situation_date: fiche.situation_date,
-            student_role: fiche.student_role,
-            realization_conditions: fiche.realization_conditions,
-          }}
-        />
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_24rem] lg:items-start">
+          <div className="order-2 space-y-6 lg:order-1">
+            <ActivityInfoReadOnly
+              info={{
+                company_name: fiche.company_name,
+                pfmp_period: fiche.pfmp_period,
+                situation_date: fiche.situation_date,
+                student_role: fiche.student_role,
+                realization_conditions: fiche.realization_conditions,
+              }}
+            />
 
-        {!sectionsError && (!sections || sections.length === 0) && (
-          <div className="rounded-xl border border-yellow-500 bg-yellow-950/40 p-4">
-            <p className="font-semibold text-yellow-300">
-              Aucune section trouvée
-            </p>
-            <p className="text-yellow-200">
-              La fiche existe, mais aucune section n’est encore associée.
-            </p>
-          </div>
-        )}
-
-        {!sectionsError && sections && sections.length > 0 && isFinalPreview && (
-          <FinalSectionsPreview sections={sections} />
-        )}
-
-        {!sectionsError && sections && sections.length > 0 && !isFinalPreview && (
-          <div className="space-y-4">
-            {sections.map((section) => (
-              <div key={section.id} className="space-y-3">
-                <SectionEditor
-                  section={section}
-                  isReadOnly={isReadOnly}
-                  showTeacherFeedback={!isTeacherFeedbackReadOnly}
-                />
-
-                <TeacherSectionFeedbackEditor
-                  sectionId={section.id}
-                  initialFeedback={section.teacher_feedback ?? null}
-                  readOnly={isTeacherFeedbackReadOnly}
-                />
+            {!sectionsError && (!sections || sections.length === 0) && (
+              <div className="rounded-xl border border-yellow-500 bg-yellow-950/40 p-4">
+                <p className="font-semibold text-yellow-300">
+                  Aucune section trouvée
+                </p>
+                <p className="text-yellow-200">
+                  La fiche existe, mais aucune section n’est encore associée.
+                </p>
               </div>
-            ))}
+            )}
+
+            {!sectionsError && sections && sections.length > 0 && isFinalPreview && (
+              <FinalSectionsPreview sections={sections} />
+            )}
+
+            {!sectionsError && sections && sections.length > 0 && !isFinalPreview && (
+              <div className="space-y-4">
+                {sections.map((section) => (
+                  <SectionEditor
+                    key={section.id}
+                    section={section}
+                    isReadOnly={isReadOnly}
+                    showTeacherFeedback={false}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-        )}
+
+          <div className="order-1 lg:order-2">
+            <TeacherTreatmentPanel
+              ficheId={ficheId}
+              status={fiche.status}
+              statusLabel={getStatusLabel(fiche.status)}
+              sections={sections ?? []}
+              isTeacherFeedbackReadOnly={isTeacherFeedbackReadOnly}
+              canExportWord={canExportWord}
+              showEvaluationAction={!isFinalPreview}
+              initialReport={latestReport?.report_json ?? null}
+              initialReportCreatedAt={latestReport?.created_at ?? null}
+            />
+          </div>
+        </div>
       </section>
     </main>
   );

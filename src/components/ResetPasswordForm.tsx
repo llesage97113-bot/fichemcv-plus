@@ -9,6 +9,7 @@ import {
   validateNewPassword,
 } from "@/lib/auth/passwordRecovery";
 import { createClient } from "@/lib/supabase/client";
+import PasswordInput from "@/components/PasswordInput";
 
 type CustomTokenStatus = "none" | "valid" | "invalid" | "expired" | "consumed";
 type RecoveryState =
@@ -286,9 +287,8 @@ export default function ResetPasswordForm({
         >
           Nouveau mot de passe
         </label>
-        <input
+        <PasswordInput
           id="new-password"
-          type="password"
           autoComplete="new-password"
           required
           minLength={PASSWORD_MIN_LENGTH}
@@ -306,9 +306,8 @@ export default function ResetPasswordForm({
         >
           Confirmer le nouveau mot de passe
         </label>
-        <input
+        <PasswordInput
           id="confirm-password"
-          type="password"
           autoComplete="new-password"
           required
           minLength={PASSWORD_MIN_LENGTH}

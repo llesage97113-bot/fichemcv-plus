@@ -2,6 +2,7 @@
 
 import { FormEvent, useState } from "react";
 import Link from "next/link";
+import PasswordInput from "@/components/PasswordInput";
 
 type RegistrationSuccess = {
   email: string;
@@ -261,12 +262,16 @@ export default function StudentRegistrationPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-200">
+                <label
+                  htmlFor="student-password"
+                  className="mb-1 block text-sm font-medium text-slate-200"
+                >
                   Mot de passe
                 </label>
-                <input
+                <PasswordInput
+                  id="student-password"
                   required
-                  type="password"
+                  autoComplete="new-password"
                   minLength={8}
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
@@ -275,12 +280,16 @@ export default function StudentRegistrationPage() {
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-200">
+                <label
+                  htmlFor="student-confirm-password"
+                  className="mb-1 block text-sm font-medium text-slate-200"
+                >
                   Confirmer le mot de passe
                 </label>
-                <input
+                <PasswordInput
+                  id="student-confirm-password"
                   required
-                  type="password"
+                  autoComplete="new-password"
                   minLength={8}
                   value={confirmPassword}
                   onChange={(event) => setConfirmPassword(event.target.value)}

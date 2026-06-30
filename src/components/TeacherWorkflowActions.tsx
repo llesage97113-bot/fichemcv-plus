@@ -165,7 +165,7 @@ export default function TeacherWorkflowActions({
               )
             }
             disabled={isLoading}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-red-950/30 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg border border-red-400/50 bg-red-500/10 px-4 py-2 text-sm font-semibold text-red-100 transition hover:bg-red-500/20 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
             {isLoading ? "Renvoi en cours..." : "Renvoyer en correction"}
           </button>
@@ -236,7 +236,7 @@ export default function TeacherWorkflowActions({
               runWorkflowAction("validate_fiche", "La fiche a été validée.")
             }}
             disabled={isLoading}
-            className="inline-flex w-full items-center justify-center rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white shadow-sm shadow-red-950/30 transition hover:bg-red-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
+            className="inline-flex w-full items-center justify-center rounded-lg bg-sky-500 px-4 py-2 text-sm font-semibold text-slate-950 shadow-sm shadow-sky-950/30 transition hover:bg-sky-400 disabled:cursor-not-allowed disabled:bg-slate-700 disabled:text-slate-400 sm:w-auto"
           >
             {isLoading
               ? "Validation en cours..."
@@ -273,13 +273,11 @@ export default function TeacherWorkflowActions({
         )}
 
         {passiveWorkflowLabel && (
-          <button
-            type="button"
-            disabled
-            className="inline-flex w-full cursor-not-allowed items-center justify-center rounded-lg border border-emerald-400/50 bg-emerald-500/10 px-4 py-2 text-sm font-bold text-emerald-100 sm:w-auto"
+          <p
+            className="w-full rounded-lg border border-slate-700 bg-slate-950/50 px-4 py-2 text-sm font-semibold text-slate-200 sm:w-auto"
           >
             {passiveWorkflowLabel}
-          </button>
+          </p>
         )}
 
         {!canRequestCorrection &&

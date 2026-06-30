@@ -9,12 +9,14 @@ type TeacherSectionFeedbackEditorProps = {
   sectionId: string;
   initialFeedback?: string | null;
   readOnly?: boolean;
+  embedded?: boolean;
 };
 
 export default function TeacherSectionFeedbackEditor({
   sectionId,
   initialFeedback = null,
   readOnly = false,
+  embedded = false,
 }: TeacherSectionFeedbackEditorProps) {
   const router = useRouter();
 
@@ -58,7 +60,13 @@ export default function TeacherSectionFeedbackEditor({
 
   if (readOnly) {
     return (
-      <div className="mt-3 rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
+      <div
+        className={
+          embedded
+            ? "border-t border-slate-800 pt-3"
+            : "mt-3 rounded-2xl border border-red-500/40 bg-red-500/10 p-4"
+        }
+      >
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-red-200">
             Remarque professeur
@@ -78,7 +86,13 @@ export default function TeacherSectionFeedbackEditor({
   }
 
   return (
-    <div className="mt-3 rounded-2xl border border-red-500/40 bg-red-500/10 p-4">
+    <div
+      className={
+        embedded
+          ? "border-t border-slate-800 pt-3"
+          : "mt-3 rounded-2xl border border-red-500/40 bg-red-500/10 p-4"
+      }
+    >
       <div className="mb-3">
         <p className="text-xs font-semibold uppercase tracking-wide text-red-200">
           Remarque professeur
