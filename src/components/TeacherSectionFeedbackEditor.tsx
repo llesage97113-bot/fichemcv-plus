@@ -10,6 +10,7 @@ type TeacherSectionFeedbackEditorProps = {
   initialFeedback?: string | null;
   readOnly?: boolean;
   embedded?: boolean;
+  onFeedbackSaved?: (feedback: string) => void;
 };
 
 export default function TeacherSectionFeedbackEditor({
@@ -17,6 +18,7 @@ export default function TeacherSectionFeedbackEditor({
   initialFeedback = null,
   readOnly = false,
   embedded = false,
+  onFeedbackSaved,
 }: TeacherSectionFeedbackEditorProps) {
   const router = useRouter();
 
@@ -47,6 +49,7 @@ export default function TeacherSectionFeedbackEditor({
       }
 
       setSaveState("saved");
+      onFeedbackSaved?.(feedback.trim());
       router.refresh();
     } catch (error) {
       setSaveState("error");

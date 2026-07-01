@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { clearSupabaseAuthStorage, createClient } from "@/lib/supabase/client";
 import { getRoleHomePath } from "@/lib/auth/getRoleHomePath";
@@ -11,6 +11,28 @@ type ExistingSession = {
   email: string;
   homePath: string;
 };
+
+type DiagnosticEvent = {
+  id: number;
+  time: string;
+  message: string;
+};
+
+const isDevelopment = process.env.NODE_ENV === "development";
+
+function formatDiagnosticTime() {
+  return new Intl.DateTimeFormat("fr-FR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date());
+}
+
+function sanitizeDiagnosticMessage(message: string) {
+  return message
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[email masque]")
+    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[token masque]");
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,6 +45,67 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [existingSession, setExistingSession] =
     useState<ExistingSession | null>(null);
+  const [diagnosticEvents, setDiagnosticEvents] = useState<DiagnosticEvent[]>([]);
+
+  const addDiagnosticEvent = useCallback((message: string) => {
+    if (!isDevelopment) {
+      return;
+    }
+
+    setDiagnosticEvents((events) => [
+      ...events,
+      {
+        id: events.length ? events[events.length - 1].id + 1 : 1,
+        time: formatDiagnosticTime(),
+        message: sanitizeDiagnosticMessage(message),
+      },
+    ]);
+  }, []);
+
+  useEffect(() => {
+    if (!isDevelopment) {
+      return;
+    }
+
+    const hydrationDiagnosticId = window.setTimeout(() => {
+      addDiagnosticEvent("Page rendue côté client");
+      addDiagnosticEvent("React hydraté");
+    }, 0);
+
+    return () => window.clearTimeout(hydrationDiagnosticId);
+  }, [addDiagnosticEvent]);
+
+  useEffect(() => {
+    if (!isDevelopment) {
+      return;
+    }
+
+    function handleError(event: ErrorEvent) {
+      addDiagnosticEvent(
+        `Erreur JavaScript : ${event.message || "erreur inconnue"}`
+      );
+    }
+
+    function handleUnhandledRejection(event: PromiseRejectionEvent) {
+      const reason = event.reason;
+      const message =
+        reason instanceof Error
+          ? reason.message
+          : typeof reason === "string"
+            ? reason
+            : "promesse rejetée sans message";
+
+      addDiagnosticEvent(`Erreur JavaScript : ${message}`);
+    }
+
+    window.addEventListener("error", handleError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
+
+    return () => {
+      window.removeEventListener("error", handleError);
+      window.removeEventListener("unhandledrejection", handleUnhandledRejection);
+    };
+  }, [addDiagnosticEvent]);
 
   useEffect(() => {
     async function cleanExpiredLocalSession() {
@@ -87,6 +170,7 @@ export default function LoginPage() {
   }
 
   async function handleLogin(event: FormEvent<HTMLFormElement>) {
+    addDiagnosticEvent("Soumission React reçue");
     event.preventDefault();
     setIsLoading(true);
     setErrorMessage("");
@@ -199,6 +283,14 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
+                  onVisibilityChange={(visible) => {
+                    addDiagnosticEvent("Clic œil reçu");
+                    addDiagnosticEvent(
+                      `Visibilité mot de passe : ${
+                        visible ? "affichée" : "masquée"
+                      }`
+                    );
+                  }}
                   className="w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-slate-100 outline-none transition placeholder:text-slate-500 focus:border-sky-400"
                   placeholder="••••••••"
                 />
@@ -243,6 +335,37 @@ export default function LoginPage() {
               Créer mon compte élève
             </Link>
           </div>
+
+          {isDevelopment && (
+            <div className="mt-4 rounded-xl border border-amber-400/40 bg-amber-400/10 p-3 text-amber-50">
+              <div className="flex items-center justify-between gap-3">
+                <h2 className="text-sm font-semibold">
+                  Diagnostic mobile temporaire
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setDiagnosticEvents([])}
+                  className="shrink-0 rounded-lg border border-amber-200/40 px-2 py-1 text-xs font-semibold text-amber-50 transition hover:border-amber-100 hover:bg-amber-300/10"
+                >
+                  Effacer le diagnostic
+                </button>
+              </div>
+              <ol className="mt-3 max-h-40 space-y-1 overflow-y-auto pr-1 text-xs leading-5 text-amber-100">
+                {diagnosticEvents.length ? (
+                  diagnosticEvents.map((event) => (
+                    <li key={event.id} className="break-words">
+                      <span className="font-mono text-amber-200">
+                        {event.time}
+                      </span>{" "}
+                      {event.message}
+                    </li>
+                  ))
+                ) : (
+                  <li className="text-amber-100/80">Aucun événement.</li>
+                )}
+              </ol>
+            </div>
+          )}
         </div>
       </section>
     </main>

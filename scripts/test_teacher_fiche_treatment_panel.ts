@@ -52,18 +52,8 @@ function assertTeacherFichePagePanel() {
   );
   assertIncludes(
     source,
-    "Commentaires et consignes",
-    "Le panneau doit rapprocher les remarques professeur des actions."
-  );
-  assertIncludes(
-    source,
-    "TeacherSectionFeedbackEditor",
-    "Le formulaire existant de remarque professeur doit être réutilisé."
-  );
-  assertIncludes(
-    source,
-    "embedded",
-    "Les remarques intégrées au panneau doivent utiliser l'affichage compact."
+    "CollapsibleTeacherFeedback",
+    "Chaque rubrique doit intégrer son bandeau de remarque professeur."
   );
   assertIncludes(
     source,
@@ -128,6 +118,128 @@ function assertTeacherFichePagePanel() {
     source,
     "router.push",
     "La page ne doit pas introduire de redirection après action."
+  );
+}
+
+function assertFeedbackSectionIsCollapsible() {
+  const source = readProjectFile(
+    "src/components/CollapsibleTeacherFeedback.tsx"
+  );
+
+  assertIncludes(
+    source,
+    "useState(false)",
+    "Chaque remarque doit être repliée par défaut."
+  );
+  assertIncludes(
+    source,
+    "Remarque professeur",
+    "Le bouton doit afficher le libellé attendu."
+  );
+  assertIncludes(
+    source,
+    '(initialFeedback ?? "").trim().length > 0',
+    "L'indicateur renseignée doit ignorer les remarques vides ou composées d'espaces."
+  );
+  assertIncludes(
+    source,
+    "• renseignée",
+    "Le bouton doit signaler une remarque non vide."
+  );
+  assertIncludes(source, 'type="button"', "Le contrôle doit être un bouton.");
+  assertIncludes(
+    source,
+    "aria-expanded={isExpanded}",
+    "Le bouton doit exposer son état d'ouverture."
+  );
+  assertIncludes(
+    source,
+    "aria-controls={contentId}",
+    "Le bouton doit référencer la zone contrôlée."
+  );
+  assertIncludes(
+    source,
+    "onClick={() => setIsExpanded((expanded) => !expanded)}",
+    "Un second clic doit permettre de replier la section."
+  );
+  assertIncludes(
+    source,
+    "hidden={!isExpanded}",
+    "Le contenu doit être masqué sans démonter les éditeurs."
+  );
+  assertIncludes(
+    source,
+    "focus-visible:outline",
+    "Le bouton doit avoir un focus clavier visible."
+  );
+  assertIncludes(
+    source,
+    "min-h-11",
+    "Le bouton doit disposer d'une zone tactile adaptée au mobile."
+  );
+  assertIncludes(
+    source,
+    'aria-hidden="true"',
+    "Un indicateur visuel décoratif doit compléter l'état accessible."
+  );
+  assertIncludes(
+    source,
+    "onFeedbackSaved",
+    "L'indicateur doit être actualisé après la sauvegarde."
+  );
+  assert(
+    countOccurrences(source, /<TeacherSectionFeedbackEditor\b/g) === 1,
+    "L'éditeur de remarque ne doit pas être dupliqué."
+  );
+  assertIncludes(
+    source,
+    "readOnly={readOnly}",
+    "Le mode lecture seule doit être transmis à l'éditeur."
+  );
+}
+
+function assertFeedbackIsRenderedBelowEverySection() {
+  const pageSource = readProjectFile("src/app/fiches/[id]/page.tsx");
+  const sectionEditorSource = readProjectFile("src/components/SectionEditor.tsx");
+
+  assert(
+    countOccurrences(pageSource, /<CollapsibleTeacherFeedback\b/g) === 2,
+    "Les rubriques standard et la prévisualisation finale doivent chacune rendre leur remarque."
+  );
+  assertMatches(
+    pageSource,
+    /<SectionEditor[\s\S]*?showTeacherFeedback=\{false\}[\s\S]*?embedded[\s\S]*?\/>[\s\S]*?<CollapsibleTeacherFeedback[\s\S]*?sectionId=\{section\.id\}/,
+    "Le bandeau doit suivre immédiatement le contenu de la rubrique standard."
+  );
+  assertMatches(
+    pageSource,
+    /<CollapsibleTeacherFeedback[\s\S]*?sectionId=\{section\.id\}[\s\S]*?initialFeedback=\{section\.teacher_feedback \?\? null\}/,
+    "La remarque doit rester associée à l'identifiant et au contenu de sa section."
+  );
+  assertIncludes(
+    pageSource,
+    "readOnly={isTeacherFeedbackReadOnly}",
+    "Le mode lecture seule contextuel doit être conservé."
+  );
+  assertIncludes(
+    pageSource,
+    "readOnly",
+    "La prévisualisation finale doit conserver les remarques en lecture seule."
+  );
+  assertIncludes(
+    sectionEditorSource,
+    "embedded",
+    "L'éditeur de rubrique doit permettre une composition dans une carte commune."
+  );
+  assertNotIncludes(
+    pageSource,
+    "TeacherFeedbackSection",
+    "Le bloc global de remarques doit avoir disparu du panneau."
+  );
+  assertNotIncludes(
+    pageSource,
+    "feedbackCount",
+    "Le compteur global de remarques doit avoir disparu."
   );
 }
 
@@ -199,10 +311,21 @@ function assertFeedbackEditorRouteIsPreserved() {
     "embedded",
     "L'éditeur doit proposer un rendu intégré sans nouveau formulaire."
   );
+  assertIncludes(
+    source,
+    "onFeedbackSaved?.(feedback.trim())",
+    "L'éditeur doit notifier la valeur sauvegardée sans vider son état local."
+  );
+  assert(
+    countOccurrences(source, /\{feedback\}/g) === 2,
+    "La remarque éditable ne doit être rendue que dans le textarea contrôlé, sans copie au-dessus."
+  );
 }
 
 function main() {
   assertTeacherFichePagePanel();
+  assertFeedbackSectionIsCollapsible();
+  assertFeedbackIsRenderedBelowEverySection();
   assertWorkflowActionsRemainContextual();
   assertFeedbackEditorRouteIsPreserved();
 

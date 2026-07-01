@@ -20,6 +20,7 @@ type SectionEditorProps = {
   };
   isReadOnly?: boolean;
   showTeacherFeedback?: boolean;
+  embedded?: boolean;
 };
 
 function getStatusLabel(status: string) {
@@ -120,6 +121,7 @@ export default function SectionEditor({
   section,
   isReadOnly = false,
   showTeacherFeedback = true,
+  embedded = false,
 }: SectionEditorProps) {
   const router = useRouter();
   const [content, setContent] = useState(section.content ?? "");
@@ -196,7 +198,13 @@ export default function SectionEditor({
   }, [content, isReadOnly]);
 
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm sm:p-5">
+    <article
+      className={
+        embedded
+          ? "p-4 sm:p-5"
+          : "rounded-2xl border border-slate-800 bg-slate-900/60 p-4 shadow-sm sm:p-5"
+      }
+    >
       <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="mb-2 flex flex-wrap gap-2">

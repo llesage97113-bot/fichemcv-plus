@@ -1,34 +1,59 @@
 "use client";
 
-import { InputHTMLAttributes, useState } from "react";
+import { InputHTMLAttributes, useEffect, useRef, useState } from "react";
 
-type PasswordInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">;
+type PasswordInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & {
+  onVisibilityChange?: (visible: boolean) => void;
+};
 
 export default function PasswordInput({
   className = "",
   disabled,
+  onVisibilityChange,
   ...props
 }: PasswordInputProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const shouldRestoreFocusRef = useRef(false);
   const label = isVisible ? "Masquer le mot de passe" : "Afficher le mot de passe";
-  const toggleVisibility = () => setIsVisible((current) => !current);
+
+  useEffect(() => {
+    if (!shouldRestoreFocusRef.current) {
+      return;
+    }
+
+    shouldRestoreFocusRef.current = false;
+    inputRef.current?.focus({ preventScroll: true });
+  }, [isVisible]);
+
+  const inputProps = {
+    ...props,
+    disabled,
+    ref: inputRef,
+    className:
+      "min-w-0 flex-1 border-0 bg-transparent px-4 py-3 text-inherit outline-none placeholder:text-slate-500",
+  };
 
   return (
     <div
       className={`${className} flex items-stretch overflow-hidden p-0 focus-within:border-sky-400`}
     >
-      <input
-        {...props}
-        disabled={disabled}
-        type={isVisible ? "text" : "password"}
-        className="min-w-0 flex-1 border-0 bg-transparent px-4 py-3 text-inherit outline-none placeholder:text-slate-500"
-      />
+      {isVisible ? (
+        <input key="password-visible" type="text" {...inputProps} />
+      ) : (
+        <input key="password-hidden" type="password" {...inputProps} />
+      )}
       <button
         type="button"
         aria-label={label}
         aria-pressed={isVisible}
         disabled={disabled}
-        onClick={toggleVisibility}
+        onClick={() => {
+          const nextVisibility = !isVisible;
+          shouldRestoreFocusRef.current = true;
+          setIsVisible(nextVisibility);
+          onVisibilityChange?.(nextVisibility);
+        }}
         className="inline-flex min-h-11 min-w-11 touch-manipulation items-center justify-center self-stretch text-slate-400 transition hover:bg-slate-800 hover:text-sky-200 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-sky-400 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isVisible ? (

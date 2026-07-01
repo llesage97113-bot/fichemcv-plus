@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import SectionEditor from "@/components/SectionEditor";
 import TeacherWorkflowActions from "@/components/TeacherWorkflowActions";
 import GenerateEvaluationButton from "@/components/GenerateEvaluationButton";
-import TeacherSectionFeedbackEditor from "@/components/TeacherSectionFeedbackEditor";
+import CollapsibleTeacherFeedback from "@/components/CollapsibleTeacherFeedback";
 import AppNavigation from "@/components/AppNavigation";
 import ActivityInfoReadOnly from "@/components/ActivityInfoReadOnly";
 import { requireRole } from "@/lib/auth/requireUser";
@@ -118,8 +118,6 @@ function TeacherTreatmentPanel({
   ficheId,
   status,
   statusLabel,
-  sections,
-  isTeacherFeedbackReadOnly,
   canExportWord,
   showEvaluationAction,
   initialReport,
@@ -128,12 +126,6 @@ function TeacherTreatmentPanel({
   ficheId: string;
   status: string | null;
   statusLabel: string;
-  sections: {
-    id: string;
-    section_title: string;
-    teacher_feedback?: string | null;
-  }[];
-  isTeacherFeedbackReadOnly: boolean;
   canExportWord: boolean;
   showEvaluationAction: boolean;
   initialReport: Parameters<
@@ -141,8 +133,6 @@ function TeacherTreatmentPanel({
   >[0]["initialReport"];
   initialReportCreatedAt?: string | null;
 }) {
-  const hasSections = sections.length > 0;
-
   return (
     <aside className="space-y-4 lg:sticky lg:top-6">
       <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4 shadow-sm sm:p-5">
@@ -191,40 +181,6 @@ function TeacherTreatmentPanel({
           </section>
         )}
 
-        <section className="rounded-2xl border border-slate-800 bg-slate-950/50 p-4">
-          <div className="mb-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Commentaires et consignes
-            </p>
-            <p className="mt-1 text-sm leading-6 text-slate-300">
-              Remarques professeur par section, visibles par l’élève.
-            </p>
-          </div>
-
-          {!hasSections && (
-            <p className="text-sm leading-6 text-slate-400">
-              Aucune section disponible pour ajouter une remarque.
-            </p>
-          )}
-
-          {hasSections && (
-            <div className="space-y-4">
-              {sections.map((section) => (
-                <div key={section.id}>
-                  <p className="mb-2 text-sm font-semibold leading-snug text-slate-100">
-                    {section.section_title}
-                  </p>
-                  <TeacherSectionFeedbackEditor
-                    sectionId={section.id}
-                    initialFeedback={section.teacher_feedback ?? null}
-                    readOnly={isTeacherFeedbackReadOnly}
-                    embedded
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
       </div>
     </aside>
   );
@@ -237,6 +193,7 @@ function FinalSectionsPreview({
     id: string;
     section_title: string;
     content: string | null;
+    teacher_feedback?: string | null;
   }[];
 }) {
   return (
@@ -255,25 +212,36 @@ function FinalSectionsPreview({
           const content = section.content?.trim();
 
           return (
-            <article key={section.id} className="border-b border-slate-800 pb-7 last:border-b-0 last:pb-0">
-              <div className="mb-3 flex items-start gap-3">
-                <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-300">
-                  {index + 1}
-                </span>
-                <h3 className="text-lg font-semibold leading-snug text-slate-100">
-                  {section.section_title}
-                </h3>
+            <article
+              key={section.id}
+              className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/30"
+            >
+              <div className="p-4 sm:p-5">
+                <div className="mb-3 flex items-start gap-3">
+                  <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-800 text-xs font-semibold text-slate-300">
+                    {index + 1}
+                  </span>
+                  <h3 className="text-lg font-semibold leading-snug text-slate-100">
+                    {section.section_title}
+                  </h3>
+                </div>
+
+                {content ? (
+                  <p className="whitespace-pre-wrap text-justify text-sm leading-7 text-slate-200 sm:text-base">
+                    {content}
+                  </p>
+                ) : (
+                  <p className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-6 text-slate-500">
+                    Aucun contenu renseigné par l’élève pour cette section.
+                  </p>
+                )}
               </div>
 
-              {content ? (
-                <p className="whitespace-pre-wrap text-justify text-sm leading-7 text-slate-200 sm:text-base">
-                  {content}
-                </p>
-              ) : (
-                <p className="rounded-xl border border-slate-800 bg-slate-950/50 p-4 text-sm leading-6 text-slate-500">
-                  Aucun contenu renseigné par l’élève pour cette section.
-                </p>
-              )}
+              <CollapsibleTeacherFeedback
+                sectionId={section.id}
+                initialFeedback={section.teacher_feedback ?? null}
+                readOnly
+              />
             </article>
           );
         })}
@@ -621,12 +589,22 @@ export default async function FicheDetailPage({
             {!sectionsError && sections && sections.length > 0 && !isFinalPreview && (
               <div className="space-y-4">
                 {sections.map((section) => (
-                  <SectionEditor
+                  <div
                     key={section.id}
-                    section={section}
-                    isReadOnly={isReadOnly}
-                    showTeacherFeedback={false}
-                  />
+                    className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60 shadow-sm"
+                  >
+                    <SectionEditor
+                      section={section}
+                      isReadOnly={isReadOnly}
+                      showTeacherFeedback={false}
+                      embedded
+                    />
+                    <CollapsibleTeacherFeedback
+                      sectionId={section.id}
+                      initialFeedback={section.teacher_feedback ?? null}
+                      readOnly={isTeacherFeedbackReadOnly}
+                    />
+                  </div>
                 ))}
               </div>
             )}
@@ -637,8 +615,6 @@ export default async function FicheDetailPage({
               ficheId={ficheId}
               status={fiche.status}
               statusLabel={getStatusLabel(fiche.status)}
-              sections={sections ?? []}
-              isTeacherFeedbackReadOnly={isTeacherFeedbackReadOnly}
               canExportWord={canExportWord}
               showEvaluationAction={!isFinalPreview}
               initialReport={latestReport?.report_json ?? null}

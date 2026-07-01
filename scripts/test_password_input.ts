@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { execSync } from "node:child_process";
 
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) {
@@ -26,11 +27,18 @@ function countMatches(source: string, pattern: RegExp) {
   return source.match(pattern)?.length ?? 0;
 }
 
+function getButtonClassName(source: string) {
+  const match = source.match(/<button[\s\S]*?className="([^"]+)"/);
+  assert(match, "Le bouton oeil doit declarer ses classes visuelles.");
+  return match[1];
+}
+
 const passwordInput = readSource("src/components/PasswordInput.tsx");
 const loginPage = readSource("src/app/login/page.tsx");
 const registrationPage = readSource("src/app/inscription-eleve/page.tsx");
 const passwordChangeForm = readSource("src/components/PasswordChangeForm.tsx");
 const resetPasswordForm = readSource("src/components/ResetPasswordForm.tsx");
+const passwordButtonClassName = getButtonClassName(passwordInput);
 
 const interactivePasswordFiles = [
   "src/app/login/page.tsx",
@@ -42,13 +50,36 @@ const interactivePasswordFiles = [
 function assertReusablePasswordInput() {
   assertIncludes(
     passwordInput,
-    "useState(false)",
-    "Le champ doit etre masque par defaut a chaque montage"
+    "const [isVisible, setIsVisible] = useState(false)",
+    "Le composant doit conserver un seul etat React pour la visibilite"
+  );
+  assert(countMatches(passwordInput, /useState\(/g) === 1, "PasswordInput ne doit definir qu'un seul etat React.");
+  assertIncludes(passwordInput, "useRef<HTMLInputElement>(null)", "Le composant doit pouvoir restaurer le focus du nouvel input.");
+  assertIncludes(passwordInput, "useEffect(() =>", "La restauration du focus doit etre liee a la bascule de visibilite.");
+  assertIncludes(
+    passwordInput,
+    '<input key="password-hidden" type="password" {...inputProps} />',
+    "Le champ doit rendre un input password distinct par defaut"
   );
   assertIncludes(
     passwordInput,
+    '<input key="password-visible" type="text" {...inputProps} />',
+    "Apres clic, le champ doit rendre un input text distinct"
+  );
+  assertNotIncludes(
+    passwordInput,
     'type={isVisible ? "text" : "password"}',
-    "Le composant doit alterner entre password et text"
+    "Le composant ne doit plus modifier dynamiquement type sur le meme input"
+  );
+  assertMatches(
+    passwordInput,
+    /isVisible \? \(\s*<input key="password-visible" type="text" \{\.\.\.inputProps\} \/>\s*\) : \(\s*<input key="password-hidden" type="password" \{\.\.\.inputProps\} \/>\s*\)/,
+    "La bascule doit alterner deux elements input distincts"
+  );
+  assertMatches(
+    passwordInput,
+    /const inputProps = \{\s*\.\.\.props,\s*disabled,\s*ref: inputRef,\s*className:/,
+    "Les deux inputs doivent partager les memes props, attributs aria et classes visuelles"
   );
   assertIncludes(
     passwordInput,
@@ -77,13 +108,23 @@ function assertReusablePasswordInput() {
   );
   assertIncludes(
     passwordInput,
-    "setIsVisible((current) => !current)",
+    "const nextVisibility = !isVisible",
     "Un second clic doit remasquer le mot de passe"
   );
   assertIncludes(
     passwordInput,
-    "{...props}",
-    "Les attributs et evenements input existants doivent etre transmis"
+    "...props,",
+    "Les attributs, evenements et valeurs input existants doivent etre transmis"
+  );
+  assertIncludes(
+    passwordInput,
+    "{...inputProps}",
+    "Les deux inputs doivent reutiliser les memes props pour conserver la valeur controlee"
+  );
+  assertMatches(
+    passwordInput,
+    /onClick=\{\(\) => \{\s*const nextVisibility = !isVisible;\s*shouldRestoreFocusRef\.current = true;\s*setIsVisible\(nextVisibility\);\s*onVisibilityChange\?\.\(nextVisibility\);/,
+    "Le bouton doit basculer la visibilite, demander la restauration du focus et remonter le changement"
   );
   assertIncludes(
     passwordInput,
@@ -92,13 +133,18 @@ function assertReusablePasswordInput() {
   );
   assertIncludes(
     passwordInput,
-    'className="min-w-0 flex-1',
+    '"min-w-0 flex-1',
     "L'input doit occuper l'espace disponible sans deborder"
   );
   assertIncludes(
     passwordInput,
     "min-h-11 min-w-11",
     "Le bouton doit garder une taille tactile adaptee"
+  );
+  assertMatches(
+    passwordInput,
+    /className="[^"]*inline-flex[^"]*min-h-11[^"]*min-w-11[^"]*"/,
+    "Le bouton oeil doit rester visible et dimensionne dans la rangee flex"
   );
   assertIncludes(
     passwordInput,
@@ -117,9 +163,27 @@ function assertReusablePasswordInput() {
   );
   assertMatches(
     passwordInput,
-    /type PasswordInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type">/,
+    /type PasswordInputProps = Omit<InputHTMLAttributes<HTMLInputElement>, "type"> & \{\s*onVisibilityChange\?: \(visible: boolean\) => void;\s*\};/,
     "Le typage doit accepter les props habituelles d'un input sans exposer type"
   );
+  assertIncludes(
+    passwordInput,
+    "const nextVisibility = !isVisible",
+    "Le clic doit calculer la nouvelle visibilite avant de mettre a jour l'etat"
+  );
+  assertIncludes(
+    passwordInput,
+    "setIsVisible(nextVisibility)",
+    "Le clic doit appliquer la nouvelle visibilite calculee"
+  );
+  assertIncludes(
+    passwordInput,
+    "onVisibilityChange?.(nextVisibility)",
+    "Le composant doit remonter le changement de visibilite"
+  );
+  assert(countMatches(passwordInput, /pointer-events-none/g) === 2, "Les deux SVG doivent ignorer les evenements pointeur.");
+  assertNotIncludes(passwordButtonClassName, "hidden", "Le bouton ne doit pas etre masque.");
+  assertNotIncludes(passwordButtonClassName, "sm:hidden", "Le bouton ne doit pas etre masque sur mobile ou desktop.");
   assertNotIncludes(passwordInput, "absolute", "Le bouton ne doit plus etre superpose a l'input.");
   assertNotIncludes(passwordInput, "inset-y-0", "Le bouton ne doit plus utiliser de positionnement vertical absolu.");
   assertNotIncludes(passwordInput, "right-0", "Le bouton ne doit plus utiliser de positionnement droit absolu.");
@@ -139,8 +203,8 @@ function assertPasswordInputUsage() {
 
   assertMatches(
     loginPage,
-    /<PasswordInput[\s\S]*autoComplete="current-password"[\s\S]*value=\{password\}[\s\S]*onChange=\{\(event\) => setPassword\(event\.target\.value\)\}/,
-    "La connexion doit conserver value, onChange et autoComplete"
+    /<PasswordInput[\s\S]*autoComplete="current-password"[\s\S]*value=\{password\}[\s\S]*onChange=\{\(event\) => setPassword\(event\.target\.value\)\}[\s\S]*onVisibilityChange=\{\(visible\) => \{/,
+    "La connexion doit conserver value, onChange et autoComplete, et recevoir les changements de visibilite"
   );
   assertMatches(
     registrationPage,
@@ -178,6 +242,119 @@ function assertPasswordInputUsage() {
   assert(countMatches(resetPasswordForm, /<PasswordInput/g) === 2, "La reinitialisation doit avoir deux commandes independantes.");
 }
 
+function assertLoginMobileDiagnostic() {
+  assertIncludes(
+    loginPage,
+    'const isDevelopment = process.env.NODE_ENV === "development"',
+    "Le panneau de diagnostic doit etre limite au mode development"
+  );
+  assertIncludes(
+    loginPage,
+    "Diagnostic mobile temporaire",
+    "Le panneau doit afficher son titre temporaire"
+  );
+  assertIncludes(
+    loginPage,
+    "Effacer le diagnostic",
+    "Le panneau doit proposer un bouton d'effacement"
+  );
+  assertIncludes(
+    loginPage,
+    "max-h-40",
+    "Le panneau doit limiter sa hauteur"
+  );
+  assertIncludes(
+    loginPage,
+    "overflow-y-auto",
+    "Le panneau doit defiler si necessaire"
+  );
+  assertMatches(
+    loginPage,
+    /useEffect\(\(\) => \{\s*if \(!isDevelopment\) \{\s*return;\s*\}\s*const hydrationDiagnosticId = window\.setTimeout\(\(\) => \{\s*addDiagnosticEvent\("Page rendue côté client"\);\s*addDiagnosticEvent\("React hydraté"\);[\s\S]*return \(\) => window\.clearTimeout\(hydrationDiagnosticId\);/,
+    "Le montage client doit journaliser le rendu client et l'hydratation React"
+  );
+  assertMatches(
+    loginPage,
+    /async function handleLogin\(event: FormEvent<HTMLFormElement>\) \{\s*addDiagnosticEvent\("Soumission React reçue"\);\s*event\.preventDefault\(\);/,
+    "La soumission React doit etre journalisee au debut du gestionnaire existant"
+  );
+  assertIncludes(
+    loginPage,
+    'addDiagnosticEvent("Clic œil reçu")',
+    "Le clic oeil doit etre journalise depuis la page de connexion"
+  );
+  assertIncludes(
+    loginPage,
+    "Visibilité mot de passe :",
+    "La nouvelle visibilite du mot de passe doit etre journalisee"
+  );
+  assertIncludes(
+    loginPage,
+    'visible ? "affichée" : "masquée"',
+    "Le diagnostic doit distinguer les etats affichee et masquee"
+  );
+  assertIncludes(
+    loginPage,
+    'window.addEventListener("error", handleError)',
+    "Les erreurs JavaScript globales doivent etre capturees"
+  );
+  assertIncludes(
+    loginPage,
+    'window.addEventListener("unhandledrejection", handleUnhandledRejection)',
+    "Les rejets de promesses doivent etre captures"
+  );
+  assertIncludes(
+    loginPage,
+    'window.removeEventListener("error", handleError)',
+    "Le listener window.error doit etre nettoye"
+  );
+  assertIncludes(
+    loginPage,
+    'window.removeEventListener("unhandledrejection", handleUnhandledRejection)',
+    "Le listener unhandledrejection doit etre nettoye"
+  );
+  assertIncludes(
+    loginPage,
+    "sanitizeDiagnosticMessage",
+    "Les messages dynamiques du diagnostic doivent passer par une sanitation"
+  );
+  assertIncludes(
+    loginPage,
+    "[email masque]",
+    "Les emails doivent etre masques dans le diagnostic"
+  );
+  assertIncludes(
+    loginPage,
+    "[token masque]",
+    "Les tokens JWT doivent etre masques dans le diagnostic"
+  );
+  assertNotIncludes(
+    loginPage,
+    "addDiagnosticEvent(identifier",
+    "L'identifiant saisi ne doit pas etre journalise"
+  );
+  assertNotIncludes(
+    loginPage,
+    "addDiagnosticEvent(password",
+    "Le mot de passe ne doit pas etre journalise"
+  );
+  assertIncludes(
+    loginPage,
+    'fetch("/api/auth/login"',
+    "La logique d'authentification doit continuer a appeler la meme route"
+  );
+  assertIncludes(
+    loginPage,
+    "body: JSON.stringify({ identifier, password })",
+    "Le corps de connexion doit rester inchange"
+  );
+  assertIncludes(
+    loginPage,
+    "router.push(\"/\")",
+    "La redirection post-connexion doit rester inchangee"
+  );
+}
+
 function assertNoForgottenInteractivePasswordField() {
   for (const path of interactivePasswordFiles) {
     assertNotIncludes(
@@ -209,10 +386,31 @@ function assertNoAuthOrSupabaseDrift() {
   }
 }
 
+function assertNoRouteMigrationOrRlsDiff() {
+  const changedFiles = execSync("git diff --name-only", {
+    encoding: "utf8",
+  })
+    .split("\n")
+    .filter(Boolean);
+
+  for (const path of changedFiles) {
+    assert(
+      !path.startsWith("src/app/api/"),
+      `Aucune route API ne doit etre modifiee pour ce diagnostic: ${path}`
+    );
+    assert(
+      !path.startsWith("supabase/migrations/"),
+      `Aucune migration ou RLS ne doit etre modifiee pour ce diagnostic: ${path}`
+    );
+  }
+}
+
 assertReusablePasswordInput();
 assertPasswordInputUsage();
+assertLoginMobileDiagnostic();
 assertNoForgottenInteractivePasswordField();
 assertFormsStillSubmit();
 assertNoAuthOrSupabaseDrift();
+assertNoRouteMigrationOrRlsDiff();
 
 console.log("Password input tests passed.");
